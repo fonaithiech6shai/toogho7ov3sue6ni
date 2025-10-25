@@ -5,7 +5,7 @@
 # rm -rf /srv/development_rozarioflowers.ru/{*,.*} && cp -r /srv/development_rozarioflowers.ru/. /srv/development_rozarioflowers.ru/
 # sudo nginx -t && sudo nginx -s reload && sudo systemctl status nginx
 
-# set -e # Отключено для корректной работы git check-ignore
+set -e
 
 DIR=${1:-.} # Путь к папке, которую нужно проверить (по умолчанию текущая папка)
 
@@ -22,8 +22,12 @@ is_ignored() {
   
   # Используем git check-ignore для точной проверки
   if command -v git >/dev/null 2>&1 && [[ -d ".git" ]] && [[ -n "$file" ]] && [[ -f "$file" ]]; then
+    # Отключаем set -e для git check-ignore
+    set +e
     git check-ignore "$file" >/dev/null 2>&1
-    return $?
+    local result=$?
+    set -e
+    return $result
   else
     # Fallback: простая проверка без git - не игнорируем
     return 1
@@ -66,22 +70,26 @@ convert_to_utf8() { # Функция для конвертации файла в
   fi
 }
 # Поиск файлов, не являющихся UTF-8, и их конвертация (с учетом .gitignore)
+set +e  # Отключаем для цикла с проверками
 find "$DIR" -type f \( -path "*/public/*" -o -path "*/tmp/*" -o -path "*/vendor/*" -o -path "*/+/*" -o -path "*/.git/*" \) -prune -o -type f -print | while read -r file; do
   # Пропускаем файлы из .gitignore
   if is_ignored "$file"; then continue; fi
   
   # Проверяем кодировку
-  encoding=$(file -i "$file" | grep -v 'charset=utf-8')
+  encoding=$(file -i "$file" 2>/dev/null | grep -v 'charset=utf-8' || true)
   if [[ -n "$encoding" ]]; then
     convert_to_utf8 "$file" # Преобразование файла в UTF-8
   fi
 done
+set -e  # Включаем обратно
 # Чистка бэкапов (с учетом .gitignore)
+set +e  # Отключаем для проверок .gitignore
 find "$DIR" \( -path "*/public" -o -path "*/tmp" -o -path "*/vendor" -o -path "*/+" -o -path "*/.git" \) -prune -o -type f -name "*.bak" -print | while read -r file; do
   if ! is_ignored "$file"; then
     rm -f "$file"
   fi
 done
+set -e  # Включаем обратно
 #
 echo "Все файлы обработаны."
 
@@ -89,6 +97,7 @@ echo "Все файлы обработаны."
 #
 # shopt -s nocasematch # Включить режим, в котором сравнение строк будет игнорировать регистр
 # Обработка .rb файлов (с учетом .gitignore)
+set +e  # Отключаем для проверок .gitignore
 find "$DIR" -type f \( -path "*/public/*" -o -path "*/tmp/*" -o -path "*/vendor/*" -o -path "*/+/*" -o -path "*/.git/*" \) -prune -o -type f -name "*.rb" -print | while read -r file; do
   # Пропускаем файлы из .gitignore
   if is_ignored "$file"; then continue; fi
@@ -114,6 +123,7 @@ find "$DIR" -type f \( -path "*/public/*" -o -path "*/tmp/*" -o -path "*/vendor/
   (echo "# encoding: utf-8"; cat "$file") > "$file.tmp" # Создать временный файл с новой первой строкой
   mv "$file.tmp" "$file" # Перемещаем временный файл обратно в исходный
 done
+set -e  # Включаем обратно
 # shopt -u casematch # Включить режим, в котором сравнение строк НЕ будет игнорировать регистр
 #
 echo "Все файлы *.rb обработаны."
@@ -121,6 +131,7 @@ echo "Все файлы *.rb обработаны."
 # Проверка и исправление наличия строки `- # coding: utf-8` в начале всех .haml файлов, за исключением файлов, включаемых в другие файлы (_*.haml)
 #
 # Обработка .haml файлов (с учетом .gitignore)
+set +e  # Отключаем для проверок .gitignore
 find "$DIR" -type f \( -path "*/public/*" -o -path "*/tmp/*" -o -path "*/vendor/*" -o -path "*/+/*" -o -path "*/.git/*" \) -prune -o -type f -name "*.haml" ! -name "_*.haml" -print | while read -r file; do
   # Пропускаем файлы из .gitignore
   if is_ignored "$file"; then continue; fi
@@ -146,6 +157,7 @@ find "$DIR" -type f \( -path "*/public/*" -o -path "*/tmp/*" -o -path "*/vendor/
     mv "$file.tmp" "$file" # Перемещаем временный файл обратно в исходный
   fi
 done
+set -e  # Включаем обратно
 #
 echo "Все файлы *.haml (кроме _*.haml) обработаны."
 
@@ -169,11 +181,13 @@ check_and_apply_dos2unix() {
 #
 echo "Проверка line endings в .rb и .haml файлах..."
 # Проверка line endings в .rb и .haml файлах (с учетом .gitignore)
+set +e  # Отключаем для проверок .gitignore
 find "$DIR" -type f \( -path "*/public/*" -o -path "*/tmp/*" -o -path "*/vendor/*" -o -path "*/+/*" -o -path "*/.git/*" \) -prune -o -type f \( -name "*.rb" -o -name "*.haml" \) -print | while read -r file; do
   # Пропускаем файлы из .gitignore
   if is_ignored "$file"; then continue; fi
   check_and_apply_dos2unix "$file"
 done
+set -e  # Включаем обратно
 
 # Очистка от мусора
 #
