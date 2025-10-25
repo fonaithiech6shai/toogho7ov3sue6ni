@@ -77,31 +77,57 @@ end %>
 %>
 
 <% if @post.has_review_comment? && @related_comments.any? %>
-<% @related_comments.each_with_index do |comment, index| %>
+<%
+  # Подготавливаем данные для агрегированной микроразметки Product с Reviews
+  product_name = begin; @post.review_item_name || (prdct ? prdct.header : cmplct_header); rescue; prdct ? prdct.header : cmplct_header; end
+  product_image = begin; @post.review_item_image || (prdct ? prdct.thumb_image(true) : '/images/default-product.jpg'); rescue; prdct ? prdct.thumb_image(true) : '/images/default-product.jpg'; end
+  
+  # Вычисляем агрегированный рейтинг
+  total_rating = 0
+  valid_ratings_count = 0
+  @related_comments.each do |comment|
+    rating = comment.rating || @post.rating || 5
+    total_rating += rating.to_f
+    valid_ratings_count += 1
+  end
+  average_rating = valid_ratings_count > 0 ? (total_rating / valid_ratings_count).round(1) : 5.0
+%>
 <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "Review",
-    "@id": "#review-<%=@post.id%>-<%=index + 1%>",
-    "author": {
-      "@type": "Person",
-      "name": "<%=comment.name.present? ? comment.name : @post.customer_name%>"
-    },
-    "datePublished": "<%=(comment.created_at || @post.created_at).strftime('%Y-%m-%d')%>",
-    "reviewBody": "<%=h(comment.body)%>",
-    "reviewRating": {
-      "@type": "Rating",
-      "ratingValue": "<%=comment.rating || @post.rating || 5%>",
-      "bestRating": "5"
-    },
-    "itemReviewed": {
-      "@type": "Product",
-      "name": "<%=begin; @post.review_item_name || (prdct ? prdct.header : cmplct_header); rescue; prdct ? prdct.header : cmplct_header; end%>",
-      "image": "<%=begin; @post.review_item_image || (prdct ? prdct.thumb_image(true) : '/images/default-product.jpg'); rescue; prdct ? prdct.thumb_image(true) : '/images/default-product.jpg'; end%>"
-    }
-  }
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "@id": "#product-<%=@post.id%>",
+  "name": "<%=product_name%>",
+  "image": "<%=product_image%>",
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "<%=average_rating%>",
+    "reviewCount": "<%=@related_comments.size%>",
+    "bestRating": "5",
+    "worstRating": "1"
+  },
+  "review": [
+    <% @related_comments.each_with_index do |comment, index| %>
+    {
+      "@type": "Review",
+      "@id": "#review-<%=@post.id%>-<%=index + 1%>",
+      "author": {
+        "@type": "Person",
+        "name": "<%=comment.name.present? ? comment.name : (@post.customer_name || 'Клиент')%>"
+      },
+      "datePublished": "<%=(comment.created_at || @post.created_at).strftime('%Y-%m-%d')%>",
+      "reviewBody": "<%=h(comment.body)%>",
+      "reviewRating": {
+        "@type": "Rating",
+        "ratingValue": "<%=comment.rating || @post.rating || 5%>",
+        "bestRating": "5",
+        "worstRating": "1"
+      }
+    }<%= index < @related_comments.size - 1 ? ',' : '' %>
+    <% end %>
+  ]
+}
 </script>
-<% end %>
 <% end %>
 
 <%
@@ -394,4 +420,4 @@ $(window).load(function() {
 });
 </script>%>
 
-<!-- Микроразметка Review теперь показывается только при наличии связанного комментария -->
+<!-- Микроразметка Product с агрегированным рейтингом и всеми отзывами -->
