@@ -362,12 +362,6 @@ end %>
           <div style="color: #2c3e50; line-height: 1.6; font-size: 15px;">
             <%= h(comment.body).gsub("\n", "<br>").html_safe %>
           </div>
-          
-          <% if @post.order_eight_digit_id && index == 0 %>
-            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 13px; color: #7f8c8d;">
-              📦 Заказ № <%= @post.order_eight_digit_id %>
-            </div>
-          <% end %>
         </div>
       <% end %>
     <% end %>
