@@ -11,6 +11,37 @@ DIR=${1:-.} # Путь к папке, которую нужно проверит
 
 echo "Проверка файлов в папке: $DIR"
 
+# Функция для проверки, игнорируется ли файл в .gitignore
+is_ignored() {
+  local file="$1"
+  
+  # Если нет .gitignore, файл не игнорируется
+  if [[ ! -f ".gitignore" ]]; then
+    return 1
+  fi
+  
+  # Используем git check-ignore для точной проверки
+  if command -v git >/dev/null 2>&1 && [[ -d ".git" ]] && [[ -n "$file" ]] && [[ -f "$file" ]]; then
+    git check-ignore "$file" >/dev/null 2>&1
+    return $?
+  else
+    # Fallback: простая проверка без git - не игнорируем
+    return 1
+  fi
+}
+
+# Функция для создания find команды с исключением .gitignore файлов
+create_find_with_gitignore() {
+  local base_find="$1"
+  
+  # Если git доступен, используем его для фильтрации
+  if command -v git >/dev/null 2>&1 && [[ -d ".git" ]]; then
+    echo "$base_find | while IFS= read -r file; do if ! git check-ignore \"\$file\" >/dev/null 2>&1; then echo \"\$file\"; fi; done"
+  else
+    echo "$base_find"
+  fi
+}
+
 # Поиск и вывод файлов в кодировках несовместимых с UTF-8
 #
 # find "$DIR" -type f -exec file -i {} \; | grep -Ev  'charset=(us-ascii|iso-8859-1|iso-8859-15|windows-1252|utf-8)' | while read -r line; do # Поиск файлов в кодировках несовместимых с UTF-8
@@ -34,19 +65,33 @@ convert_to_utf8() { # Функция для конвертации файла в
     echo "Файл успешно конвертирован: $file"
   fi
 }
-find "$DIR" -type f \( -path "*/public/*" -o -path "*/tmp/*" -o -path "*/vendor/*" -o -path "*/+/*" \) -prune -o -type f -exec file -i {} \; | grep -v 'charset=utf-8' | while read -r line; do # Поиск файлов, не являющихся UTF-8, и их конвертация (исключая public, tmp, vendor, +)
-  file=$(echo "$line" | cut -d: -f1) # Извлечение имени файла из строки
-  convert_to_utf8 "$file" # Преобразование файла в UTF-8
+# Поиск файлов, не являющихся UTF-8, и их конвертация (с учетом .gitignore)
+find "$DIR" -type f \( -path "*/public/*" -o -path "*/tmp/*" -o -path "*/vendor/*" -o -path "*/+/*" -o -path "*/.git/*" \) -prune -o -type f -print | while read -r file; do
+  # Пропускаем файлы из .gitignore
+  if is_ignored "$file"; then continue; fi
+  
+  # Проверяем кодировку
+  encoding=$(file -i "$file" | grep -v 'charset=utf-8')
+  if [[ -n "$encoding" ]]; then
+    convert_to_utf8 "$file" # Преобразование файла в UTF-8
+  fi
 done
-# Чистка бэкапов (исключая public, tmp, vendor, +)
-find "$DIR" \( -path "*/public" -o -path "*/tmp" -o -path "*/vendor" -o -path "*/+" \) -prune -o -type f -name "*.bak" -print0 | xargs -0 -r rm -f
+# Чистка бэкапов (с учетом .gitignore)
+find "$DIR" \( -path "*/public" -o -path "*/tmp" -o -path "*/vendor" -o -path "*/+" -o -path "*/.git" \) -prune -o -type f -name "*.bak" -print | while read -r file; do
+  if ! is_ignored "$file"; then
+    rm -f "$file"
+  fi
+done
 #
 echo "Все файлы обработаны."
 
 # Удалить все строки подобные `# encoding: utf-8` из файлов *.rb, кроме самой `# encoding: utf-8` 
 #
 # shopt -s nocasematch # Включить режим, в котором сравнение строк будет игнорировать регистр
-find "$DIR" -type f \( -path "*/public/*" -o -path "*/tmp/*" -o -path "*/vendor/*" -o -path "*/+/*" \) -prune -o -type f -name "*.rb" -print | while read -r file; do # Рекурсивно найти все файлы .rb в директории и обработать их (исключая public, tmp, vendor, +)
+# Обработка .rb файлов (с учетом .gitignore)
+find "$DIR" -type f \( -path "*/public/*" -o -path "*/tmp/*" -o -path "*/vendor/*" -o -path "*/+/*" -o -path "*/.git/*" \) -prune -o -type f -name "*.rb" -print | while read -r file; do
+  # Пропускаем файлы из .gitignore
+  if is_ignored "$file"; then continue; fi
   sed -i '1s/^\xEF\xBB\xBF//' "$file" # Убираем BOM из файла (если присутствует)
   frst_line=$(head -n 1 "$file" |             tr -d ' ' | tr '[:upper:]' '[:lower:]') # Получить первую строку файла без пробелов в нижнем регистре
   scnd_line=$(head -n 2 "$file" | tail -n 1 | tr -d ' ' | tr '[:upper:]' '[:lower:]') # Получить вторую строку файла без пробелов в нижнем регистре
@@ -75,7 +120,10 @@ echo "Все файлы *.rb обработаны."
 
 # Проверка и исправление наличия строки `- # coding: utf-8` в начале всех .haml файлов, за исключением файлов, включаемых в другие файлы (_*.haml)
 #
-find "$DIR" -type f \( -path "*/public/*" -o -path "*/tmp/*" -o -path "*/vendor/*" -o -path "*/+/*" \) -prune -o -type f -name "*.haml" ! -name "_*.haml" -print | while read -r file; do # Найти все файлы .haml (исключая public, tmp, vendor, +)
+# Обработка .haml файлов (с учетом .gitignore)
+find "$DIR" -type f \( -path "*/public/*" -o -path "*/tmp/*" -o -path "*/vendor/*" -o -path "*/+/*" -o -path "*/.git/*" \) -prune -o -type f -name "*.haml" ! -name "_*.haml" -print | while read -r file; do
+  # Пропускаем файлы из .gitignore
+  if is_ignored "$file"; then continue; fi
   sed -i '1s/^\xEF\xBB\xBF//' "$file" # Убираем BOM из файла (если присутствует)
   frst_line=$(head -n 1 "$file" |             tr -d ' ' | tr '[:upper:]' '[:lower:]') # Получить первую строку файла без пробелов в нижнем регистре
   scnd_line=$(head -n 2 "$file" | tail -n 1 | tr -d ' ' | tr '[:upper:]' '[:lower:]') # Получить вторую строку файла без пробелов в нижнем регистре
@@ -120,7 +168,10 @@ check_and_apply_dos2unix() {
 # Применяем dos2unix к .rb и .haml файлам при необходимости
 #
 echo "Проверка line endings в .rb и .haml файлах..."
-find "$DIR" -type f \( -path "*/public/*" -o -path "*/tmp/*" -o -path "*/vendor/*" -o -path "*/+/*" \) -prune -o -type f \( -name "*.rb" -o -name "*.haml" \) -print | while read -r file; do
+# Проверка line endings в .rb и .haml файлах (с учетом .gitignore)
+find "$DIR" -type f \( -path "*/public/*" -o -path "*/tmp/*" -o -path "*/vendor/*" -o -path "*/+/*" -o -path "*/.git/*" \) -prune -o -type f \( -name "*.rb" -o -name "*.haml" \) -print | while read -r file; do
+  # Пропускаем файлы из .gitignore
+  if is_ignored "$file"; then continue; fi
   check_and_apply_dos2unix "$file"
 done
 
