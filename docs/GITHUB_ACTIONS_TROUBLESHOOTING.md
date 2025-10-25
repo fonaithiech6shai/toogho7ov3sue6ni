@@ -79,6 +79,18 @@ Error: Path does not exist: trivy-results.sarif
 
 ## Текущие исправления
 
+### Внесенные изменения в `.gitleaks.toml`:
+
+1. ✅ **Исправлен TOML синтаксис:**
+   - Удалены некорректные экранированные символы
+   - Упрощена конфигурация для лучшей совместимости
+   - Добавлены правильные allowlist правила
+
+2. ✅ **Оптимизированы исключения:**
+   - Корректное исключение auxiliary directory (`+/**`)
+   - Правильные паттерны для тестовых файлов
+   - Исключение системных директорий
+
 ### Внесенные изменения в `.github/workflows/quality-checks.yml`:
 
 1. ✅ **Добавлены права доступа:**
@@ -98,7 +110,12 @@ Error: Path does not exist: trivy-results.sarif
    - `continue-on-error: true` для всех security-related шагов
    - Более информативные сообщения об ошибках
 
-4. ✅ **Добавлена диагностика:**
+4. ✅ **Исправлена конфигурация GitLeaks:**
+   - Убраны deprecated параметры
+   - Добавлена проверка результатов сканирования
+   - Улучшена обработка ошибок конфигурации
+
+5. ✅ **Добавлена диагностика:**
    - Показ файлов для сканирования
    - Настройка серьезности для Trivy
 
@@ -123,6 +140,103 @@ with:
   output: 'trivy-results.sarif'
   severity: 'CRITICAL,HIGH,MEDIUM'
   exit-code: '0'  # Не прерывать workflow при найденных уязвимостях
+```
+
+## Проблемы с GitLeaks
+
+### Проблема 4: "invalid escaped character U+002F '/'"
+
+**Симптомы:**
+```
+FTL unable to load gitleaks config, err: While parsing config: toml: invalid escaped character U+002F '/'
+```
+
+**Причина:**
+Неправильное экранирование символов в TOML конфигурации GitLeaks.
+
+**Решение:**
+Использовать правильный синтаксис TOML без лишних экранирований:
+```toml
+# Неправильно:
+paths = [
+    "\/\+\/.*",
+    "\+\/.*"
+]
+
+# Правильно:
+paths = [
+    "+/**",
+    "**/.git/**"
+]
+```
+
+### Проблема 5: "Unexpected input(s) 'config-path'"
+
+**Причина:**
+Устаревший или неправильный параметр в новой версии gitleaks-action.
+
+**Решение:**
+Использовать корректные параметры:
+```yaml
+- name: Run GitLeaks
+  uses: gitleaks/gitleaks-action@v2
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  with:
+    config-path: .gitleaks.toml  # Этот параметр поддерживается
+  continue-on-error: true
+```
+
+### Проблема 6: "File results.sarif does not exist"
+
+**Причина:**
+GitLeaks не создал SARIF файл из-за ошибок конфигурации или отсутствия находок.
+
+**Решение:**
+Добавить проверку существования файла:
+```yaml
+- name: Check GitLeaks results
+  if: always()
+  run: |
+    if [ -f "results.sarif" ]; then
+      echo "✅ GitLeaks scan completed with results"
+    else
+      echo "⚠️  GitLeaks scan completed without SARIF output"
+    fi
+```
+
+## Исправленная конфигурация GitLeaks
+
+```toml
+# Gitleaks configuration for Rozario.Flowers
+title = "Rozario Security Scanning"
+
+# Skip auxiliary directory with test data
+[allowlist]
+paths = [
+    "+/**",
+    "**/.git/**",
+    "**/vendor/**",
+    "**/tmp/**",
+    "**/log/**"
+]
+
+files = [
+    "test_*.rb",
+    "*_test.rb",
+    "*.tmp",
+    "*.log",
+    "*.bak"
+]
+
+# Allowlist common false positives
+regexes = [
+    "Mozilla",
+    "localhost",
+    "127.0.0.1",
+    "example_api_key",
+    "test_token"
+]
 ```
 
 Эти исправления должны решить основные проблемы с GitHub Actions security scanning.
