@@ -1,53 +1,29 @@
-# Gitleaks configuration
-title = "Розарио.Цветы Security Scanning Configuration"
+# Gitleaks configuration for Rozario.Flowers
+title = "Rozario Security Scanning"
 
-# Global allowlist
-[[rules.allowlist]]
-description = "Auxiliary directory with test scripts and utilities"
-paths = [
-    "\/\+\/.*",
-    "\+\/.*",
-    ".*\/\+\/.*"
-]
-
-[[rules.allowlist]] 
-description = "Test files with mock data and examples"
-files = [
-    "test_.*\.(rb|py|sh)$",
-    ".*_test\.(rb|py|sh)$",
-    ".*\.tmp$",
-    ".*\.bak$"
-]
-
-[[rules.allowlist]]
-description = "Common false positives in web development"
-regexes = [
-    "Mozilla\/[0-9\.]+.*Chrome\/[0-9\.]+.*Safari\/[0-9\.]+",
-    "@user_agent\s*=\s*[\"']Mozilla",
-    "User-Agent:\s*Mozilla",
-    "example_api_key",
-    "test_token",
-    "demo_secret",
-    "localhost:\d+",
-    "127\.0\.0\.1:\d+",
-    "0\.0\.0\.0:\d+"
-]
-
-[[rules.allowlist]]
-description = "Development and system directories"
-paths = [
-    "\.git\/.*",
-    "vendor\/.*",
-    "tmp\/.*",
-    "log\/.*",
-    "utils\/.*",
-    "scripts\/.*"
-]
-
-# Skip certain file types entirely
+# Skip auxiliary directory with test data
 [allowlist]
+paths = [
+    "+/**",
+    "**/.git/**",
+    "**/vendor/**",
+    "**/tmp/**",
+    "**/log/**"
+]
+
 files = [
-    ".*\.log$",
-    ".*\.swp$",
-    ".*\.tmp$"
+    "test_*.rb",
+    "*_test.rb",
+    "*.tmp",
+    "*.log",
+    "*.bak"
+]
+
+# Allowlist common false positives
+regexes = [
+    "Mozilla",
+    "localhost",
+    "127.0.0.1",
+    "example_api_key",
+    "test_token"
 ]
