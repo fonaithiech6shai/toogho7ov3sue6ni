@@ -228,32 +228,41 @@ class Smile < ActiveRecord::Base
     order_eight_digit_id.present? && order_products_for_display.present?
   end
   
-  # Метод для получения связанного комментария (только опубликованные)
+  # Метод для получения связанного комментария (только опубликованные) - оставляем для совместимости
   def related_comment
-    return nil unless order_eight_digit_id.present?
+    related_comments.first
+  end
+  
+  # Новый метод для получения всех связанных комментариев заказа (только опубликованные)
+  def related_comments
+    return [] unless order_eight_digit_id.present?
     
     begin
       if defined?(Comment)
-        # Используем where вместо find_by для корректной работы с BIT полями
-        comment = Comment.where(order_eight_digit_id: order_eight_digit_id).first
+        # Получаем все комментарии для данного заказа
+        comments = Comment.where(order_eight_digit_id: order_eight_digit_id)
         
-        # Проверяем, что комментарий опубликован, используя local helper
-        if comment && convert_bit_to_bool(comment.published)
-          comment
-        else
-          nil
-        end
+        # Фильтруем только опубликованные, используя local helper
+        comments.select do |comment|
+          convert_bit_to_bool(comment.published)
+        end.sort_by(&:created_at) # Сортируем по дате создания
+      else
+        []
       end
     rescue => e
-      Rails.logger.error "Error fetching comment for smile #{id}: #{e.message}" if defined?(Rails)
-      nil
+      Rails.logger.error "Error fetching comments for smile #{id}: #{e.message}" if defined?(Rails)
+      []
     end
   end
   
-  # Метод для проверки, есть ли связанный комментарий для Review схемы
+  # Метод для проверки, есть ли связанные комментарии для Review схемы
   def has_review_comment?
-    comment = related_comment
-    comment && comment.body.present?
+    related_comments.any? { |comment| comment.body.present? }
+  end
+  
+  # Метод для проверки, есть ли хотя бы один связанный комментарий (для совместимости)
+  def has_review_comments?
+    related_comments.any?
   end
   
   # Helper метод для проверки статуса публикации

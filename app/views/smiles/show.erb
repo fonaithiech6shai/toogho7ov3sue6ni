@@ -67,28 +67,31 @@ rescue StandardError => e
 end %>
 
 <%
-  # Микроразметка Review - только при наличии связанного комментария
-  @related_comment = @post.related_comment
+  # Микроразметка Review - только при наличии связанных комментариев
+  @related_comments = @post.related_comments
+  @related_comment = @related_comments.first # Оставляем для совместимости
   # Debug info
   puts "DEBUG: Smile #{@post.id}, order_eight_digit_id: #{@post.order_eight_digit_id}"
-  puts "DEBUG: Related comment found: #{@related_comment ? @related_comment.id : 'none'}"
+  puts "DEBUG: Related comments found: #{@related_comments.size}"
   puts "DEBUG: has_review_comment?: #{@post.has_review_comment?}"
 %>
 
-<% if @post.has_review_comment? && @related_comment %>
+<% if @post.has_review_comment? && @related_comments.any? %>
+<% @related_comments.each_with_index do |comment, index| %>
 <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "Review",
+    "@id": "#review-<%=@post.id%>-<%=index + 1%>",
     "author": {
       "@type": "Person",
-      "name": "<%=@related_comment.name.present? ? @related_comment.name : @post.customer_name%>"
+      "name": "<%=comment.name.present? ? comment.name : @post.customer_name%>"
     },
-    "datePublished": "<%=(@related_comment.created_at || @post.created_at).strftime('%Y-%m-%d')%>",
-    "reviewBody": "<%=h(@related_comment.body)%>",
+    "datePublished": "<%=(comment.created_at || @post.created_at).strftime('%Y-%m-%d')%>",
+    "reviewBody": "<%=h(comment.body)%>",
     "reviewRating": {
       "@type": "Rating",
-      "ratingValue": "<%=@related_comment.rating || @post.rating || 5%>",
+      "ratingValue": "<%=comment.rating || @post.rating || 5%>",
       "bestRating": "5"
     },
     "itemReviewed": {
@@ -98,6 +101,7 @@ end %>
     }
   }
 </script>
+<% end %>
 <% end %>
 
 <%
@@ -314,52 +318,60 @@ end %>
       <% } %>
     </table>
     
-    <!-- Блок с отзывом клиента -->
-    <% if @post.has_review_comment? && @related_comment %>
-      <%
-        comment_author = @related_comment.name.present? ? @related_comment.name : (@post.customer_name || 'Клиент')
-        comment_date = @related_comment.date || @related_comment.created_at
-        comment_rating = @related_comment.rating || @post.rating || 5
-      %>
-      <div style="margin: 32px 0; padding: 24px; background: #f9f9f9; border-left: 4px solid #4CAF50; border-radius: 4px;">
-        <h3 style="margin: 0 0 16px 0; color: #2c3e50; font-size: 18px;">💬 Отзыв клиента</h3>
-        
-        <div style="margin-bottom: 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 16px;">
-          <div style="font-weight: bold; color: #34495e;">
-            👤 <%= comment_author %>
-          </div>
-          <% if comment_date %>
-            <div style="color: #7f8c8d; font-size: 14px;">
-              📅 <%= comment_date.strftime('%d.%m.%Y') %>
+    <!-- Блоки с отзывами клиентов -->
+    <% if @post.has_review_comment? && @related_comments.any? %>
+      <% @related_comments.each_with_index do |comment, index| %>
+        <%
+          comment_author = comment.name.present? ? comment.name : (@post.customer_name || 'Клиент')
+          comment_date = comment.date || comment.created_at
+          comment_rating = comment.rating || @post.rating || 5
+          
+          # Определяем цвет бордера для различия отзывов
+          border_colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#795548']
+          border_color = border_colors[index % border_colors.length]
+        %>
+        <div style="margin: 32px 0; padding: 24px; background: #f9f9f9; border-left: 4px solid <%= border_color %>; border-radius: 4px;">
+          <h3 style="margin: 0 0 16px 0; color: #2c3e50; font-size: 18px;">
+            💬 Отзыв клиента<% if @related_comments.size > 1 %> (№<%= index + 1 %>)<% end %>
+          </h3>
+          
+          <div style="margin-bottom: 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 16px;">
+            <div style="font-weight: bold; color: #34495e;">
+              👤 <%= comment_author %>
             </div>
+            <% if comment_date %>
+              <div style="color: #7f8c8d; font-size: 14px;">
+                📅 <%= comment_date.strftime('%d.%m.%Y') %>
+              </div>
+            <% end %>
+            <% if comment_rating && comment_rating > 0 %>
+              <div style="display: flex; align-items: center;">
+                <span style="margin-right: 8px; color: #7f8c8d;">Оценка:</span>
+                <% @rating = comment_rating.to_i %>
+                <%= render "partials/_rating", :handlers => [:haml], layout: false %>
+              </div>
+            <% end %>
+          </div>
+          
+          <% if comment.title && comment.title.present? %>
+            <h4 style="margin: 0 0 12px 0; color: #34495e; font-size: 16px; font-weight: 600;">
+              <%= h(comment.title) %>
+            </h4>
           <% end %>
-          <% if comment_rating && comment_rating > 0 %>
-            <div style="display: flex; align-items: center;">
-              <span style="margin-right: 8px; color: #7f8c8d;">Оценка:</span>
-              <% @rating = comment_rating.to_i %>
-              <%= render "partials/_rating", :handlers => [:haml], layout: false %>
+          
+          <div style="color: #2c3e50; line-height: 1.6; font-size: 15px;">
+            <%= h(comment.body).gsub("\n", "<br>").html_safe %>
+          </div>
+          
+          <% if @post.order_eight_digit_id && index == 0 %>
+            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 13px; color: #7f8c8d;">
+              📦 Заказ № <%= @post.order_eight_digit_id %>
             </div>
           <% end %>
         </div>
-        
-        <% if @related_comment.title && @related_comment.title.present? %>
-          <h4 style="margin: 0 0 12px 0; color: #34495e; font-size: 16px; font-weight: 600;">
-            <%= h(@related_comment.title) %>
-          </h4>
-        <% end %>
-        
-        <div style="color: #2c3e50; line-height: 1.6; font-size: 15px;">
-          <%= h(@related_comment.body).gsub("\n", "<br>").html_safe %>
-        </div>
-        
-        <% if @post.order_eight_digit_id %>
-          <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 13px; color: #7f8c8d;">
-            📦 Заказ № <%= @post.order_eight_digit_id %>
-          </div>
-        <% end %>
-      </div>
+      <% end %>
     <% end %>
-    <!-- Конец блока с отзывом -->
+    <!-- Конец блоков с отзывами -->
     
     <div align="center" style="padding-bottom: 24px;">
       <a href="/" class="btn" style="cursor:pointer;font-size:16px;">Перейти в каталог букетов</a>
