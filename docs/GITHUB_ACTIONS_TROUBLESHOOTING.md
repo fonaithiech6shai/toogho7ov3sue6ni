@@ -1,0 +1,128 @@
+# GitHub Actions Troubleshooting Guide
+
+## Проблемы с CodeQL и SARIF загрузкой
+
+### Проблема 1: "Resource not accessible by integration"
+
+**Симптомы:**
+```
+Warning: This run of the CodeQL Action does not have permission to access the CodeQL Action API endpoints. 
+This could be because the Action is running on a pull request from a fork. 
+Details: Resource not accessible by integration
+```
+
+**Причина:**
+Отсутствуют необходимые права доступа `security-events: write` для загрузки SARIF результатов.
+
+**Решение:**
+Добавить секцию `permissions` в job:
+```yaml
+jobs:
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+```
+
+### Проблема 2: "Path does not exist: trivy-results.sarif"
+
+**Симптомы:**
+```
+Error: Path does not exist: trivy-results.sarif
+```
+
+**Причина:**
+- Trivy не создал SARIF файл (нет уязвимостей или ошибка сканирования)
+- Неправильный путь к файлу
+- Trivy завершился с ошибкой
+
+**Решение:**
+Добавить проверку существования файла перед загрузкой:
+```yaml
+- name: Check if SARIF file exists
+  id: sarif-check
+  run: |
+    if [ -f "trivy-results.sarif" ] && [ -s "trivy-results.sarif" ]; then
+      echo "sarif_exists=true" >> $GITHUB_OUTPUT
+      echo "✅ SARIF file created successfully"
+    else
+      echo "sarif_exists=false" >> $GITHUB_OUTPUT
+      echo "⚠️  SARIF file not created or empty"
+    fi
+    
+- name: Upload Trivy scan results to GitHub Security tab
+  uses: github/codeql-action/upload-sarif@v3
+  if: steps.sarif-check.outputs.sarif_exists == 'true'
+  with:
+    sarif_file: 'trivy-results.sarif'
+  continue-on-error: true
+```
+
+### Проблема 3: Trivy не находит файлы для сканирования
+
+**Причина:**
+Триви может исключать слишком много файлов из-за конфигурации `.trivyignore`.
+
+**Диагностика:**
+Добавить шаг для показа файлов, которые будут сканироваться:
+```yaml
+- name: Show files that will be scanned by Trivy
+  run: |
+    echo "📁 Files and directories that will be scanned:"
+    find . -type f \( -name "*.rb" -o -name "*.yml" -o -name "*.yaml" \) \
+      ! -path "./+/*" ! -path "./.git/*" ! -path "./vendor/*" \
+      | head -10
+```
+
+## Текущие исправления
+
+### Внесенные изменения в `.github/workflows/quality-checks.yml`:
+
+1. ✅ **Добавлены права доступа:**
+   ```yaml
+   permissions:
+     security-events: write
+     actions: read
+     contents: read
+   ```
+
+2. ✅ **Добавлена проверка SARIF файла:**
+   - Проверка существования и размера файла
+   - Условная загрузка только если файл существует
+   - Graceful handling ошибок
+
+3. ✅ **Улучшена обработка ошибок:**
+   - `continue-on-error: true` для всех security-related шагов
+   - Более информативные сообщения об ошибках
+
+4. ✅ **Добавлена диагностика:**
+   - Показ файлов для сканирования
+   - Настройка серьезности для Trivy
+
+## Рекомендации
+
+### Для Pull Requests из форков:
+- Security scans могут быть ограничены в правах
+- Рассмотреть separate workflow только для основной ветки
+- Использовать `pull_request_target` с осторожностью
+
+### Для Production:
+- Регулярно обновлять версии actions (v3 -> v4)
+- Мониторить SARIF загрузки в Security tab
+- Настроить алерты на неудачные security scans
+
+### Дополнительная конфигурация Trivy:
+```yaml
+with:
+  scan-type: 'fs'
+  scan-ref: '.'
+  format: 'sarif'
+  output: 'trivy-results.sarif'
+  severity: 'CRITICAL,HIGH,MEDIUM'
+  exit-code: '0'  # Не прерывать workflow при найденных уязвимостях
+```
+
+Эти исправления должны решить основные проблемы с GitHub Actions security scanning.
