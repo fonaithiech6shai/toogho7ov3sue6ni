@@ -131,7 +131,9 @@
   =f.submit pat(:save_and_continue), :class => 'btn btn-info', :name => 'save_and_continue'
   &nbsp;
   - if @smile && @smile.id
-    =link_to 'Удалить', url(:smiles, :destroy, :id => @smile.id), :method => :delete, :class => 'btn btn-danger', :confirm => 'Вы уверены, что хотите удалить этот отзыв?'
+    -form_tag url(:smiles, :destroy, :id => @smile.id), :method => :post, :style => 'display: inline;', :onsubmit => "return confirm('Вы уверены, что хотите удалить этот отзыв?')" do
+      =hidden_field_tag :_method, 'delete'
+      =submit_tag 'Удалить', :class => 'btn btn-danger'
     &nbsp;
   =link_to pat(:cancel), url(:smiles, :index), :class => 'btn'
 

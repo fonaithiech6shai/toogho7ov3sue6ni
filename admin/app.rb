@@ -2,11 +2,12 @@
 module Rozario
   class Admin < Padrino::Application
     puts 'WTF?'
-    # use ActiveRecord::ConnectionAdapters::ConnectionManagement
-    # register Padrino::Rendering
-    # register Padrino::Mailer
-    # register Padrino::Helpers
-    # register Padrino::Admin::AccessControl
+    use ActiveRecord::ConnectionAdapters::ConnectionManagement
+    use Rack::MethodOverride  # Add support for DELETE/PUT methods via forms
+    register Padrino::Rendering
+    register Padrino::Mailer
+    register Padrino::Helpers
+    register Padrino::Admin::AccessControl
 
     # ##
     # # Application configuration options
