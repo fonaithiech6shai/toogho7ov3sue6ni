@@ -760,3 +760,41 @@
     
     console.log('Интерактивный загрузчик товаров заказа инициализирован');
   })();
+  
+  // Автоотключение SEO индексации при снятии с публикации
+  (function() {
+    var publishedCheckbox = document.querySelector('input[name="smile[published]"]');
+    var seoIndexCheckbox = document.getElementById('chk01');
+    
+    if (publishedCheckbox && seoIndexCheckbox) {
+      publishedCheckbox.addEventListener('change', function() {
+        // Если сняли с публикации и SEO индексация включена
+        if (!this.checked && seoIndexCheckbox.checked) {
+          seoIndexCheckbox.checked = false;
+          
+          // Показываем уведомление
+          var notification = document.createElement('div');
+          notification.className = 'alert alert-info';
+          notification.style.position = 'fixed';
+          notification.style.top = '20px';
+          notification.style.right = '20px';
+          notification.style.zIndex = '9999';
+          notification.style.maxWidth = '400px';
+          notification.innerHTML = '<strong>Автоматически отключено:</strong> SEO индексация выключена, так как отзыв снят с публикации.';
+          
+          document.body.appendChild(notification);
+          
+          // Убираем уведомление через 4 секунды
+          setTimeout(function() {
+            if (notification.parentNode) {
+              notification.parentNode.removeChild(notification);
+            }
+          }, 4000);
+        }
+      });
+      
+      console.log('Автоотключение SEO индексации инициализировано');
+    } else {
+      console.warn('Не найдены элементы для автоотключения SEO');
+    }
+  })();
