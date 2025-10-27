@@ -66,7 +66,7 @@ Rozario::Admin.controllers :smiles do
     if @smile.save
       # Для BIT поля может потребоваться прямой SQL запрос
       if allowed_params.has_key?('published')
-        sql = "UPDATE smiles SET published = #{published_int} WHERE id = #{@smile.id}"
+        sql = "UPDATE smiles SET published = #{published_int}, updated_at = NOW() WHERE id = #{@smile.id}"
         ActiveRecord::Base.connection.execute(sql)
         puts "DEBUG CREATE: executed direct SQL: #{sql}"
       end
@@ -145,8 +145,8 @@ Rozario::Admin.controllers :smiles do
       if @smile.update_attributes(update_params)
         # Для BIT поля может потребоваться прямой SQL запрос
         if update_params.has_key?('published')
-          sql = "UPDATE smiles SET published = #{published_int} WHERE id = #{@smile.id}"
-          ActiveRecord::Base.connection.execute(sql)
+          sql = "UPDATE smiles SET published = #{published_int}, updated_at = NOW() WHERE id = #{@smile.id}"
+        ActiveRecord::Base.connection.execute(sql)
           puts "DEBUG UPDATE: executed direct SQL: #{sql}"
         end
         

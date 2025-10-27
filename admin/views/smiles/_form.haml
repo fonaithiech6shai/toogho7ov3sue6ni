@@ -764,12 +764,13 @@
   // Автоотключение SEO индексации при снятии с публикации
   (function() {
     var publishedCheckbox = document.querySelector('input[name="smile[published]"]');
+    var switchSlider = document.querySelector('.switch-slider');
     var seoIndexCheckbox = document.getElementById('chk01');
     
-    if (publishedCheckbox && seoIndexCheckbox) {
-      publishedCheckbox.addEventListener('change', function() {
-        // Если сняли с публикации и SEO индексация включена
-        if (!this.checked && seoIndexCheckbox.checked) {
+    function checkAndDisableSeoIndexing() {
+      // Проверяем состояние через небольшую задержку (чтобы checkbox успел обновиться)
+      setTimeout(function() {
+        if (!publishedCheckbox.checked && seoIndexCheckbox && seoIndexCheckbox.checked) {
           seoIndexCheckbox.checked = false;
           
           // Показываем уведомление
@@ -791,9 +792,19 @@
             }
           }, 4000);
         }
-      });
+      }, 100); // 100ms задержка для обновления checkbox
+    }
+    
+    if (publishedCheckbox && seoIndexCheckbox) {
+      // Отслеживаем клики по слайдеру
+      if (switchSlider) {
+        switchSlider.addEventListener('click', checkAndDisableSeoIndexing);
+      }
       
-      console.log('Автоотключение SEO индексации инициализировано');
+      // Также отслеживаем прямое изменение checkbox (для совместимости)
+      publishedCheckbox.addEventListener('change', checkAndDisableSeoIndexing);
+      
+      console.log('Автоотключение SEO индексации инициализировано (клик по слайдеру)');
     } else {
       console.warn('Не найдены элементы для автоотключения SEO');
     }
