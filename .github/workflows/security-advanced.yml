@@ -141,9 +141,11 @@ jobs:
         
         echo "📊 Критичные гемы для мониторинга:"
         for gem in "${CRITICAL_GEMS[@]}"; do
-          if grep -q "gem ['\"]$gem['\"]" Gemfile; then
-            version=$(grep "gem ['\"]$gem['\"]" Gemfile | sed "s/.*['\"]$gem['\"][[:space:]]*,[[:space:]]*['\"]//' | sed "s/['\"].*//")
-            echo "  ℹ️  $gem: $version"
+          if grep -q "gem.*$gem" Gemfile; then
+            gem_line=$(grep "gem.*$gem" Gemfile | head -1 | tr -d '\n')
+            echo "  ℹ️  $gem: $gem_line"
+          else
+            echo "  ⚠️  $gem: не найден в Gemfile"
           fi
         done
         
