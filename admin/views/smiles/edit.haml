@@ -11,7 +11,7 @@
   -# Скрытая форма для удаления
   - if @smile && @smile.persisted?
     -form_tag url(:smiles, :destroy, :id => @smile.id), :method => :delete, :id => 'delete-form', :style => 'display: none;' do
-      
+      -# Пустая форма, submit происходит через JavaScript
 :javascript
   function confirmDelete() {
     if (confirm('Вы уверены, что хотите удалить этот отзыв?')) {
