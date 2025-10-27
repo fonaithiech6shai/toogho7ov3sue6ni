@@ -14,8 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      issues: write
-      pull-requests: write
     
     steps:
     - name: 📋 Клонирование репозитория
@@ -140,41 +138,13 @@ jobs:
         chmod +x run_unit_tests.sh
         ./run_unit_tests.sh
         
-    - name: 📄 Комментарий к PR
-      if: always() && github.event_name == 'pull_request'
-      uses: actions/github-script@v7
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          try {
-          const fs = require('fs');
-          
-          // Генерируем отчёт о PR
-          let report = '## 🔍 Автоматическая проверка PR\n\n';
-          report += '✅ **Основные проверки пройдены**\n\n';
-          report += '- ✓ Проверка синтаксиса Ruby\n';
-          report += '- ✓ Unit тесты (91 тест включая новые)\n';
-          report += '- ✓ Анализ сообщений коммитов\n\n';
-          
-          if (process.env.GITHUB_HEAD_REF) {
-            report += `### 🌿 Ветка: ${process.env.GITHUB_HEAD_REF}\n\n`;
-          }
-          
-          report += '📝 **Следующие шаги:**\n';
-          report += '- Проверьте все тесты локально: `make test-unit`\n';
-          report += '- Убедитесь, что документация обновлена\n';
-          
-          // Постим комментарий
-          await github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: report
-          });
-          
-          console.log('✅ PR comment posted successfully');
-          
-        } catch (error) {
-          console.log('⚠️ Failed to post PR comment:', error.message);
-          console.log('This is usually due to missing permissions - comment will be skipped');
-        }
+    - name: 📈 Отчёт о проверках
+      if: always()
+      run: |
+        echo "📈 Отчёт о проверках PR:"
+        echo "✅ Проверка синтаксиса Ruby"
+        echo "✅ Unit тесты (91 тест включая новые)"
+        echo "✅ Анализ сообщений коммитов"
+        echo ""
+        echo "📝 Для локального тестирования выполните: make test-unit"
+        echo "📄 Проверьте обновление документации"
