@@ -142,8 +142,12 @@ Rozario::App.controllers :smiles do
     @dsc = DscntClass.new.some_method
     smile = Smile.published.find_by_slug(params[:slug])
     @id = smile.id if smile.present?
+    
     # Fallback для старых ссылок, но только среди опубликованных
-    @id = Smile.published.find_by_id(params[:slug]).id if @id.nil?
+    if @id.nil?
+      fallback_smile = Smile.published.find_by_id(params[:slug])
+      @id = fallback_smile.id if fallback_smile.present?
+    end
     
     # Return 404 if no published smile found
     halt 404 unless @id
