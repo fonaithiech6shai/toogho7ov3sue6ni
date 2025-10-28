@@ -84,7 +84,6 @@ class UploaderSmile < CarrierWave::Uploader::Base
       end
       
       puts "DEBUG UPLOADER: Обработка изображения #{width}x#{height} -> #{x}x#{x}"
-      puts "DEBUG UPLOADER: width.class=#{width.class}, height.class=#{height.class}, x.class=#{x.class}, y.class=#{y.class}, scale_factor=#{scale_factor}"
       
       # Сохраняем копию оригинального изображения для наложения
       original_for_overlay = img.dup
@@ -92,6 +91,8 @@ class UploaderSmile < CarrierWave::Uploader::Base
       # Шаг 1: Создаем фоновое изображение
       # Увеличиваем масштаб так, чтобы меньшая сторона стала равна x
       scale_factor = x.to_f / y.to_f
+      
+      puts "DEBUG UPLOADER: width.class=#{width.class}, height.class=#{height.class}, x.class=#{x.class}, y.class=#{y.class}, scale_factor=#{scale_factor}"
       
       if width > height
         # Пейзажная ориентация: увеличиваем по высоте
