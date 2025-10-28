@@ -57,13 +57,25 @@ Rozario::Admin.controllers :smiles do
     # Сохраняем поле date как есть (текстовое поле для произвольной даты)
     # allowed_params['date'] уже содержит значение из формы
     
-    hash = {}
+    # Логика для json_order: если указан номер заказа, используем NULL
     @smile = Smile.new(allowed_params)
     @smile[:slug] = @smile[:title].to_lat unless @smile[:slug].present?
-    json_order[:products_names].each.with_index do |j, i|
-      hash[i] = [["id", j[1].split(' - ')[0]], ["complect", json_order[:products_components][i.to_s]]].to_h if j[1].present?
+    
+    if allowed_params['order_eight_digit_id'].present? && allowed_params['order_eight_digit_id'].to_s.strip != ''
+      # При наличии номера заказа обнуляем json_order
+      @smile[:json_order] = nil
+      puts "DEBUG CREATE: order_eight_digit_id присутствует (#{allowed_params['order_eight_digit_id']}), json_order установлен в NULL"
+    else
+      # При отсутствии номера заказа сохраняем данные о продуктах
+      hash = {}
+      if json_order && json_order[:products_names]
+        json_order[:products_names].each.with_index do |j, i|
+          hash[i] = [["id", j[1].split(' - ')[0]], ["complect", json_order[:products_components][i.to_s]]].to_h if j[1].present?
+        end
+      end
+      @smile[:json_order] = hash.to_json
+      puts "DEBUG CREATE: order_eight_digit_id отсутствует, json_order сохранён: #{@smile[:json_order]}"
     end
-    @smile[:json_order] = hash.to_json
     if @smile.save
       # Для BIT поля может потребоваться прямой SQL запрос
       if allowed_params.has_key?('published')
@@ -99,11 +111,21 @@ Rozario::Admin.controllers :smiles do
     @product_n = []
     @product_c = []
     if @smile
-      JSON.parse(@smile.json_order).each do |num, o|
-        name = o['id'].to_s + " - " + Product.find(o['id']).header
-        @json_order[num] = {name: name, component: o['complect']}
-        @product_n[num.to_i] = name
-        @product_c[num.to_i] = o['complect']
+      # Проверяем, что json_order не NULL и не пустое
+      if @smile.json_order.present? && @smile.json_order.strip != ''
+        begin
+          JSON.parse(@smile.json_order).each do |num, o|
+            name = o['id'].to_s + " - " + Product.find(o['id']).header
+            @json_order[num] = {name: name, component: o['complect']}
+            @product_n[num.to_i] = name
+            @product_c[num.to_i] = o['complect']
+          end
+        rescue JSON::ParserError => e
+          puts "DEBUG EDIT: Ошибка парсинга json_order: #{e.message}"
+          # Оставляем пустые массивы
+        end
+      else
+        puts "DEBUG EDIT: json_order пустое или NULL, используем пустые массивы"
       end
       render 'smiles/edit'
     else
@@ -135,12 +157,21 @@ Rozario::Admin.controllers :smiles do
     # Сохраняем поле date как есть (текстовое поле для произвольной даты)
     # allowed_params['date'] уже содержит значение из формы
     
-    hash = {}
-    if json_order
-      json_order[:products_names].each.with_index do |j, i|
-        hash[i] = [["id", j[1].split(' - ')[0]], ["complect", json_order[:products_components][i.to_s]]].to_h if j[1].present?
+    # Логика для json_order: если указан номер заказа, используем NULL
+    if allowed_params['order_eight_digit_id'].present? && allowed_params['order_eight_digit_id'].to_s.strip != ''
+      # При наличии номера заказа обнуляем json_order
+      allowed_params[:json_order] = nil
+      puts "DEBUG UPDATE: order_eight_digit_id присутствует (#{allowed_params['order_eight_digit_id']}), json_order установлен в NULL"
+    else
+      # При отсутствии номера заказа сохраняем данные о продуктах
+      hash = {}
+      if json_order && json_order[:products_names]
+        json_order[:products_names].each.with_index do |j, i|
+          hash[i] = [["id", j[1].split(' - ')[0]], ["complect", json_order[:products_components][i.to_s]]].to_h if j[1].present?
+        end
       end
       allowed_params[:json_order] = hash.to_json
+      puts "DEBUG UPDATE: order_eight_digit_id отсутствует, json_order сохранён: #{allowed_params[:json_order]}"
     end
     if @smile
       update_params = allowed_params

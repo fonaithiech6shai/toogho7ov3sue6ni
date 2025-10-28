@@ -527,6 +527,11 @@
       
       // Автозаполнение полей только для страницы new
       autoFillFieldsForNewSmile(data);
+      
+      // Скрываем поле "Продукт" при успешном получении данных заказа
+      hideProductField();
+      
+      console.log('Товары заказа успешно загружены. Поле "Продукт" скрыто.');
     }
     
     // Транслитерация русских символов в латинские
@@ -739,6 +744,80 @@
         hiddenField.value = '';
         console.log('Очищено скрытое поле order_products_base_id');
       }
+      
+      // Показываем поле "Продукт" обратно при очистке заказа
+      showProductField();
+    }
+    
+    // Скрыть поле "Продукт" (при наличии данных заказа)
+    function hideProductField() {
+      var productFieldContainer = document.querySelector('fieldset:has(#products)');
+      if (!productFieldContainer) {
+        // Для совместимости с браузерами, не поддерживающими :has()
+        var productsDiv = document.getElementById('products');
+        if (productsDiv) {
+          productFieldContainer = productsDiv.closest('fieldset') || productsDiv.parentElement.closest('fieldset');
+        }
+      }
+      
+      if (productFieldContainer) {
+        productFieldContainer.style.display = 'none';
+        productFieldContainer.setAttribute('data-hidden-by-order', 'true');
+        console.log('Поле "Продукт" скрыто (заказ найден)');
+        
+        // Показываем уведомление
+        showProductFieldNotification();
+      } else {
+        console.warn('Не удалось найти контейнер поля "Продукт"');
+      }
+    }
+    
+    // Показать поле "Продукт" обратно
+    function showProductField() {
+      var productFieldContainer = document.querySelector('fieldset[data-hidden-by-order="true"]');
+      if (!productFieldContainer) {
+        var productsDiv = document.getElementById('products');
+        if (productsDiv) {
+          productFieldContainer = productsDiv.closest('fieldset') || productsDiv.parentElement.closest('fieldset');
+        }
+      }
+      
+      if (productFieldContainer && productFieldContainer.getAttribute('data-hidden-by-order') === 'true') {
+        productFieldContainer.style.display = '';
+        productFieldContainer.removeAttribute('data-hidden-by-order');
+        console.log('Поле "Продукт" показано обратно');
+        
+        // Удаляем уведомление
+        hideProductFieldNotification();
+      }
+    }
+    
+    // Показать уведомление о скрытом поле
+    function showProductFieldNotification() {
+      var existingNotification = document.getElementById('product-field-notification');
+      if (existingNotification) return; // Уведомление уже показано
+      
+      var notification = document.createElement('div');
+      notification.id = 'product-field-notification';
+      notification.className = 'alert alert-info';
+      notification.style.cssText = 'margin: 10px 0; padding: 10px 15px; border-radius: 4px;';
+      notification.innerHTML = '<strong>Инфо:</strong> Поле "Продукт" скрыто, поскольку используются данные из заказа. Очистите поле "Номер заказа", чтобы вернуть ручное управление продуктами.';
+      
+      var insertPoint = document.querySelector('fieldset:has(#products)') || 
+                       document.getElementById('products').closest('fieldset') || 
+                       document.getElementById('products').parentElement.closest('fieldset');
+      
+      if (insertPoint && insertPoint.parentElement) {
+        insertPoint.parentElement.insertBefore(notification, insertPoint);
+      }
+    }
+    
+    // Удалить уведомление
+    function hideProductFieldNotification() {
+      var notification = document.getElementById('product-field-notification');
+      if (notification) {
+        notification.remove();
+      }
     }
     
     // Обработчик события потери фокуса
@@ -755,15 +834,27 @@
     });
     
     // При загрузке страницы, если номер заказа уже заполнен
-    if (orderIdField.value.trim()) {
-      fetchOrderProducts(orderIdField.value.trim());
+    var initialOrderId = orderIdField.value.trim();
+    if (initialOrderId) {
+      fetchOrderProducts(initialOrderId);
     } else {
-      // Если номер заказа пустой, очищаем скрытое поле
+      // Если номер заказа пустой, очищаем скрытое поле и показываем поле "Продукт"
       var hiddenField = document.getElementById('smile_order_products_base_id');
       if (hiddenField) {
         hiddenField.value = '';
       }
+      showProductField(); // Показываем поле "Продукт" если нет номера заказа
     }
+    
+    // Для страниц редактирования: если order_eight_digit_id заполнен, но загрузка не прошла - скрываем поле
+    setTimeout(function() {
+      var isEditPage = window.location.pathname.includes('/admin/smiles/edit/');
+      if (isEditPage && initialOrderId && orderInfoContainer.style.display === 'none') {
+        // Заказ указан, но данные не загрузились - скрываем поле "Продукт"
+        hideProductField();
+        console.log('На странице edit с заполненным order_eight_digit_id - поле "Продукт" скрыто');
+      }
+    }, 1000); // Даём время на загрузку данных
     
     console.log('Интерактивный загрузчик товаров заказа инициализирован');
   })();
