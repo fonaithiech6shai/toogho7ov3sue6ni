@@ -97,11 +97,11 @@ class UploaderSmile < CarrierWave::Uploader::Base
       if width > height
         # Пейзажная ориентация: увеличиваем по высоте
         new_width = (width * scale_factor).to_i
-        background_img = img.resize("#{new_width}x#{x}!")
+        background_img = img.resize(new_width, x, true)  # true = force exact dimensions
       else
         # Портретная ориентация: увеличиваем по ширине
         new_height = (height * scale_factor).to_i
-        background_img = img.resize("#{x}x#{new_height}!")
+        background_img = img.resize(x, new_height, true)  # true = force exact dimensions
       end
       
       # Обрезаем до квадрата по центру
