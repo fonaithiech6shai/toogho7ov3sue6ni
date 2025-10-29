@@ -988,13 +988,36 @@ module Rozario
         
         # Only allow relative URLs or URLs from same domain
         uri = URI.parse(url)
-        if uri.relative? || (uri.host.nil? || uri.host == request.host)
+        if uri.relative?
           url
+        elsif uri.host.nil? || uri.host == request.host
+          uri.path
         else
           default
         end
       rescue URI::InvalidURIError
         default
+      end
+      
+      # Check if URL is a user account / profile page that requires authentication
+      def private_area_url?(url)
+        return false if url.blank?
+        
+        private_paths = [
+          '/user_accounts/profile',
+          '/user_accounts/edit_profile',
+          '/user_accounts/payment'
+        ]
+        
+        # Check exact matches first
+        return true if private_paths.any? { |path| url.start_with?(path) }
+        
+        # Check patterns
+        return true if url.match?(/^\/user_accounts\/profile/)
+        return true if url.match?(/^\/user_accounts\/edit/)
+        return true if url.match?(/^\/user_accounts\/payment/)
+        
+        false
       end
     end
 
