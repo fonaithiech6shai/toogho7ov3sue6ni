@@ -57,39 +57,49 @@ Rozario::App.controllers :sessions do
   end
 
   get :destroy do
-    # Сохраняем откуда пришел пользователь перед logout
-    logout_referrer = request.referer
     logout_redirect_url = '/'
     
-    if logout_referrer
-      begin
-        uri = URI.parse(logout_referrer)
-        referrer_path = uri.path
-        
-        # Проверяем, что ссылка с нашего домена или относительная
-        if uri.relative? || uri.host.nil? || uri.host == CURRENT_DOMAIN || uri.host.end_with?('.' + CURRENT_DOMAIN)
-          if referrer_path && !referrer_path.empty?
-            # Если это страница личного кабинета - редирект на главную
-            if private_area_url?(referrer_path)
-              logout_redirect_url = '/'
-            else
-              # Иначе возвращаем на исходную страницу
-              logout_redirect_url = referrer_path
+    # Получаем оригинальную страницу, с которой пользователь перешел в приватную область
+    original_page = get_original_page
+    
+    if original_page && !original_page.empty?
+      # Используем оригинальную страницу
+      logout_redirect_url = original_page
+    else
+      # Если нет сохраненной оригинальной страницы, используем старую логику
+      logout_referrer = request.referer
+      
+      if logout_referrer
+        begin
+          uri = URI.parse(logout_referrer)
+          referrer_path = uri.path
+          
+          # Проверяем, что ссылка с нашего домена или относительная
+          if uri.relative? || uri.host.nil? || uri.host == CURRENT_DOMAIN || uri.host.end_with?('.' + CURRENT_DOMAIN)
+            if referrer_path && !referrer_path.empty?
+              # Если это страница личного кабинета - редирект на главную
+              if private_area_url?(referrer_path)
+                logout_redirect_url = '/'
+              else
+                # Иначе возвращаем на исходную страницу
+                logout_redirect_url = referrer_path
+              end
             end
+          else
+            # Внешний домен - редирект на главную
+            logout_redirect_url = '/'
           end
-        else
-          # Внешний домен - редирект на главную
+        rescue => e
+          # При любой ошибке парсинга - редирект на главную
           logout_redirect_url = '/'
         end
-      rescue => e
-        # При любой ошибке парсинга - редирект на главную
-        logout_redirect_url = '/'
       end
     end
     
     # Очищаем сессию
     set_current_account(nil)
     clear_stored_location
+    clear_original_page
     
     # Устанавливаем флаг в localStorage для принудительного обновления
     content = "<!DOCTYPE html><html><head><meta charset='utf-8'></head><body><script>localStorage.setItem('user_just_logged_out', 'true'); window.location.href = '#{logout_redirect_url}';</script></body></html>"

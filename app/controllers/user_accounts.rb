@@ -96,6 +96,11 @@ Rozario::App.controllers :user_accounts do
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
     
+    # Сохраняем оригинальную страницу перед аутентификацией, если пользователь не авторизован
+    unless current_account
+      store_original_page
+    end
+    
     # Use require_authentication helper for consistent behavior
     require_authentication
     
@@ -105,6 +110,12 @@ Rozario::App.controllers :user_accounts do
   end
 
   get :edit_profile do
+    # Сохраняем оригинальную страницу, если пользователь не авторизован
+    unless current_account
+      store_original_page
+    end
+    
+    require_authentication
     @user_account = current_account
     render 'user_accounts/edit'
   end
