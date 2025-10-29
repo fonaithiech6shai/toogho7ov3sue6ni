@@ -40,7 +40,7 @@ class UploaderSmile < CarrierWave::Uploader::Base
   # Создаем уникальное имя с префиксом smile_ и unix timestamp
   #
   def filename
-    if original_filename
+    if original_filename && !original_filename.empty?
       # Получаем расширение из оригинального файла
       extension = File.extname(original_filename).downcase
       extension = '.jpg' if extension.empty? || !%w(.jpg .jpeg .gif .png).include?(extension)
