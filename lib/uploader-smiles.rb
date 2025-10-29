@@ -4,6 +4,8 @@ class UploaderSmile < CarrierWave::Uploader::Base
   include CarrierWave::ImageOptimizer
   include CarrierWave::RMagick
 
+  # Применяем обработку к основному файлу (не создаем оригинал)
+  process :make_square_with_blur
   process optimize: [{quality: 50}]
   storage :file
 
@@ -23,28 +25,7 @@ class UploaderSmile < CarrierWave::Uploader::Base
   end
 
   def default_url
-    "/images/" + [version_name, "cap1.png"].compact.join('_')
-  end
-
-  version :tn do
-    process :resize_to_limit => [256, 256]
-    def full_filename(for_file = model.logo.file)
-      img       = for_file.split('.')
-      extension = img[-1]
-      name      = img[0...-1].join('.')
-      "#{name}_#{version_name}.#{extension}"
-    end
-  end
-
-  # Новая версия: квадратное изображение с размытым фоном
-  version :square_blur do
-    process :make_square_with_blur
-    def full_filename(for_file = model.images.file)
-      img       = for_file.split('.')
-      extension = img[-1]
-      name      = img[0...-1].join('.')
-      "#{name}_#{version_name}.#{extension}"
-    end
+    "/images/cap1.png"
   end
 
   ##
@@ -56,11 +37,16 @@ class UploaderSmile < CarrierWave::Uploader::Base
 
   ##
   # Override the filename of the uploaded files
+  # Создаем уникальное имя с префиксом smile_ и unix timestamp
   #
   def filename
-    #"#{model.randomstring}.#{model.image.file.extension}"
-    if original_filename || (file && file.filename)
-      @name ||= file.filename ? file.filename.gsub(/(.*_)/,'') : "#{Digest::MD5.hexdigest(File.dirname(current_path))}.#{file.extension}"
+    if original_filename
+      # Получаем расширение из оригинального файла
+      extension = File.extname(original_filename).downcase
+      extension = '.jpg' if extension.empty? || !%w(.jpg .jpeg .gif .png).include?(extension)
+      
+      # Создаем уникальное имя: smile_unixtime.ext
+      @name ||= "smile_#{Time.now.to_i}#{extension}"
     end
   end
 
@@ -84,6 +70,7 @@ class UploaderSmile < CarrierWave::Uploader::Base
       end
       
       puts "DEBUG UPLOADER: Обработка изображения #{width}x#{height} -> #{x}x#{x}"
+      puts "DEBUG UPLOADER: Создается файл с именем: #{filename}" if respond_to?(:filename)
       
       # Сохраняем копию оригинального изображения для наложения
       original_for_overlay = img.dup
@@ -119,6 +106,7 @@ class UploaderSmile < CarrierWave::Uploader::Base
       result = background_img.composite(original_for_overlay, overlay_x, overlay_y, Magick::OverCompositeOp)
       
       puts "DEBUG UPLOADER: Квадратное изображение с размытым фоном создано: #{result.columns}x#{result.rows}"
+      puts "DEBUG UPLOADER: Финальное имя файла: #{filename}" if respond_to?(:filename)
       
       result
     end

@@ -397,17 +397,10 @@ end
     
     begin
       current_path = smile.images.current_path
-      ext = File.extname(current_path)
-      base = File.basename(current_path, ".*").to_s
-      fname = base + '_tn' + ext
       
-      # Проверяем существование thumbnail файла
-      thumbnail_path = File.join('public/uploads/smiles', fname)
-      if File.file?(thumbnail_path)
-        '/uploads/smiles/' + fname
-      else
-        '/uploads/smiles/' + File.basename(current_path)
-      end
+      # После обновления UploaderSmile все изображения уже обработаны и готовы к использованию
+      # Возвращаем путь к основному файлу (который уже является обработанным)
+      '/uploads/smiles/' + File.basename(current_path)
     rescue => e
       # Логируем ошибку и возвращаем nil
       Rails.logger.error "Error processing smile image for smile #{smile.id}: #{e.message}" if defined?(Rails)
