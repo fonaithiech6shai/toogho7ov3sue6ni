@@ -3,6 +3,9 @@
 
 # Скрипт для обработки smiles и генерации order_eight_digit_id
 
+# Устанавливаем окружение development по умолчанию
+ENV['PADRINO_ENV'] ||= 'development'
+
 require_relative 'config/boot'
 
 class SmilesOrderIdProcessor
@@ -97,13 +100,15 @@ end
 # Запуск скрипта
 if __FILE__ == $0
   puts "Скрипт обработки order_eight_digit_id для объектов smiles"
+  puts "Окружение: #{ENV['PADRINO_ENV'] || 'development'}"
   puts "=" * 60
   
   begin
     SmilesOrderIdProcessor.process_all_smiles
   rescue => e
     puts "\n✗ ОШИБКА: #{e.message}"
-    puts e.backtrace.join("\n")
+    puts "\nДетали ошибки:"
+    puts e.backtrace.first(10).join("\n")
   end
   
   puts "\nСкрипт завершен."
