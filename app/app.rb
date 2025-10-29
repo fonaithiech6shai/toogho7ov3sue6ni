@@ -1022,13 +1022,15 @@ module Rozario
       
       # Store the original page user came from before entering private area
       def store_original_page(url = nil)
+        return unless url || request.referer  # Early return if no URL available
+        
         url ||= request.referer
         return if url.blank?
         
         begin
           uri = URI.parse(url)
           # Only store if it's from our domain and not a private area itself
-          if uri.relative? || (uri.host.nil? || uri.host == request.host)
+          if uri.relative? || (uri.host.nil? || (request.respond_to?(:host) && uri.host == request.host))
             original_path = uri.relative? ? url : uri.path
             # Don't store private area URLs as original pages
             unless private_area_url?(original_path) || original_path.start_with?('/sessions/')
@@ -1036,8 +1038,8 @@ module Rozario
               session[:original_page_time] = Time.now.to_i
             end
           end
-        rescue URI::InvalidURIError
-          # Ignore invalid URLs
+        rescue URI::InvalidURIError, NoMethodError => e
+          # Ignore invalid URLs or method errors (e.g., if request.host is not available)
         end
       end
       

@@ -43,8 +43,8 @@ Rozario::App.controllers :sessions do
         clear_auth_context
         redirect redirect_url
       else
-        # Use smart default only if no stored location exists
-        default_redirect = session[:return_to] ? url(:user_accounts, :profile) : (smart_default_redirect || url(:user_accounts, :profile))
+        # Use stored location first, then smart default, then profile as fallback
+        default_redirect = smart_default_redirect || url(:user_accounts, :profile)
         clear_auth_context
         redirect_back_or_default(default_redirect)
       end

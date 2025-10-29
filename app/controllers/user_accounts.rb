@@ -91,11 +91,6 @@ Rozario::App.controllers :user_accounts do
   end
 
   get :profile do
-    # Отключаем кеширование для страницы профиля (зависит от авторизации)
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, proxy-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
-    
     # Сохраняем оригинальную страницу перед аутентификацией, если пользователь не авторизован
     unless current_account
       store_original_page
@@ -103,6 +98,11 @@ Rozario::App.controllers :user_accounts do
     
     # Use require_authentication helper for consistent behavior
     require_authentication
+    
+    # Отключаем кеширование для страницы профиля (зависит от авторизации)
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, proxy-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
     
     @active_orders = Order.where(:useraccount_id => current_account.id).where('user_datetime > ?', DateTime.now).order("created_at DESC")
     @old_orders = Order.where(:useraccount_id => current_account.id).where('user_datetime <= ?', DateTime.now).order("created_at DESC")
