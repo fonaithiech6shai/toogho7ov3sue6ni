@@ -1012,10 +1012,10 @@ module Rozario
         # Check exact matches first
         return true if private_paths.any? { |path| url.start_with?(path) }
         
-        # Check patterns
-        return true if url.match?(/^\/user_accounts\/profile/)
-        return true if url.match?(/^\/user_accounts\/edit/)
-        return true if url.match?(/^\/user_accounts\/payment/)
+        # Check patterns (using match for Ruby compatibility)
+        return true if url =~ /^\/user_accounts\/profile/
+        return true if url =~ /^\/user_accounts\/edit/
+        return true if url =~ /^\/user_accounts\/payment/
         
         false
       end
