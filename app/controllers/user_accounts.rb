@@ -37,7 +37,8 @@ Rozario::App.controllers :user_accounts do
       if params[:emb]
         ua = UserAccount.authenticate(udata[:email], udata[:password])
         set_current_account(ua)
-        redirect 'cart/checkout'
+        # Use redirect system for new registrations
+        redirect_back_or_default('cart/checkout')
       else
         flash.now[:success] = pat(:create_success, :model => 'user_account')
         render 'sessions/new'
@@ -94,13 +95,13 @@ Rozario::App.controllers :user_accounts do
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, proxy-revalidate'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
-    if current_account
-      @active_orders = Order.where(:useraccount_id => current_account.id).where('user_datetime > ?', DateTime.now).order("created_at DESC")
-      @old_orders = Order.where(:useraccount_id => current_account.id).where('user_datetime <= ?', DateTime.now).order("created_at DESC")
-      render "user_accounts/profile"
-    else
-      redirect 'sessions/new'
-    end
+    
+    # Use require_authentication helper for consistent behavior
+    require_authentication
+    
+    @active_orders = Order.where(:useraccount_id => current_account.id).where('user_datetime > ?', DateTime.now).order("created_at DESC")
+    @old_orders = Order.where(:useraccount_id => current_account.id).where('user_datetime <= ?', DateTime.now).order("created_at DESC")
+    render "user_accounts/profile"
   end
 
   get :edit_profile do

@@ -22,6 +22,7 @@
 
         %h3 Вход
         - form_tag url(:sessions, :create), :class=>'login form' do
+          = hidden_field_tag :redirect_url, '/cart/checkout'
           .login-body.modal-body
             %fieldset.control-group
               %label.login-input-label.control-label{:for => :email}= pat('login.email')

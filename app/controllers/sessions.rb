@@ -4,6 +4,8 @@ Rozario::App.controllers :sessions do
     if current_account
       redirect url(:user_accounts, :profile)
     else
+      # Store location for return after authentication, unless already stored
+      store_location unless session[:return_to]
       render 'sessions/new'
     end
   end
@@ -25,12 +27,17 @@ Rozario::App.controllers :sessions do
   post :create, :csrf_protection => false do
     if user_account = UserAccount.authenticate(params[:email], params[:password])
       set_current_account(user_account)
-      session[:user_id] = user_account.id
       
+      # Priority: explicit redirect_url > stored return_to > smart default > profile
       if params[:redirect_url]
-        redirect params[:redirect_url]
+        redirect_url = safe_return_url(params[:redirect_url], smart_default_redirect)
+        clear_stored_location
+        clear_auth_context
+        redirect redirect_url
       else
-        redirect url(:user_accounts, :profile)
+        default_redirect = smart_default_redirect || url(:user_accounts, :profile)
+        clear_auth_context
+        redirect_back_or_default(default_redirect)
       end
     else
       params[:email], params[:password] = h(params[:email]), h(params[:password])
@@ -42,8 +49,8 @@ Rozario::App.controllers :sessions do
 
   get :destroy do
     # Очищаем сессию
-    session[:user_id] = nil
     set_current_account(nil)
+    clear_stored_location
     
     # Устанавливаем флаг в localStorage для принудительного обновления
     content = "<!DOCTYPE html><html><head><meta charset='utf-8'></head><body><script>localStorage.setItem('user_just_logged_out', 'true'); window.location.href = '/';</script></body></html>"

@@ -157,6 +157,9 @@ Rozario::App.controllers :cart do
     if current_account
       render "cart/skipauth", :layout => false
     else
+      # Store current checkout page for return after authentication
+      set_auth_context('checkout')
+      store_location(request.fullpath)
       @session = session
       @user_account = UserAccount.new
       @cart = session[:cart]
@@ -172,6 +175,13 @@ Rozario::App.controllers :cart do
     if @cart.blank?
       redirect 'cart'
     end
+    
+    # Store checkout page if user needs to authenticate later
+    unless current_account
+      set_auth_context('checkout')
+      store_location(request.fullpath)
+    end
+    
     odata = JSON.parse(session[:odata])
     @dt = odata["dt"].to_i
     render 'cart/checkout'

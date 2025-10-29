@@ -5,6 +5,8 @@
 .row.well{style: 'margin: 0px;'}
   .col-md-6
     - form_tag url(:sessions, :create), :class=>'login form' do
+      - if params[:redirect_url] || params[:return_to]
+        = hidden_field_tag :redirect_url, params[:redirect_url] || params[:return_to]
       .login-body.modal-body
         %fieldset.control-group
           %label.login-input-label.control-label{:for => :email}= pat('login.email')

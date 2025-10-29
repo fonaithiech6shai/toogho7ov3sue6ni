@@ -890,6 +890,114 @@ module Rozario
       render "404"
     end
 
+    # Authentication helpers for user return URL management
+    helpers do
+      # Get current authenticated user account
+      def current_account
+        return @current_account if defined?(@current_account)
+        @current_account = session[:user_id] ? UserAccount.find(session[:user_id]) : nil
+      rescue ActiveRecord::RecordNotFound
+        session[:user_id] = nil
+        @current_account = nil
+      end
+
+      # Set current authenticated user account
+      def set_current_account(user_account)
+        @current_account = user_account
+        session[:user_id] = user_account ? user_account.id : nil
+      end
+
+      # Store the location user came from before authentication
+      def store_location(location = nil)
+        location ||= request.fullpath
+        
+        # Don't store auth-related pages or API endpoints
+        excluded_paths = ['/sessions/new', '/sessions/create', '/sessions/destroy', 
+                         '/user_accounts/new', '/user_accounts/create']
+        return if excluded_paths.include?(location)
+        return if location.start_with?('/api/', '/admin/')
+        return if location.include?('?') && location.match?(/password|token|secret/i)
+        
+        # Only store if it's a reasonable URL (not too long)
+        return if location.length > 2048
+        
+        session[:return_to] = location
+        session[:return_to_time] = Time.now.to_i
+      end
+
+      # Redirect back to stored location or default
+      def redirect_back_or_default(default = '/')
+        stored_location = session[:return_to]
+        stored_time = session[:return_to_time]
+        
+        # Clear stored location
+        session.delete(:return_to)
+        session.delete(:return_to_time)
+        
+        # Check if stored location is still valid (not older than 1 hour)
+        if stored_location && stored_time && (Time.now.to_i - stored_time) < 3600
+          redirect_location = safe_return_url(stored_location, default)
+        else
+          redirect_location = default
+        end
+        
+        redirect redirect_location
+      end
+
+      # Clear stored return location
+      def clear_stored_location
+        session.delete(:return_to)
+      end
+
+      # Require authentication with automatic location storage
+      def require_authentication(context = 'profile_access')
+        unless current_account
+          set_auth_context(context)
+          store_location
+          redirect url(:sessions, :new)
+        end
+      end
+
+      # Get smart default redirect based on context
+      def smart_default_redirect
+        case session[:auth_context]
+        when 'checkout'
+          '/cart/checkout'
+        when 'cart'
+          '/cart'
+        when 'profile_access'
+          url(:user_accounts, :profile)
+        else
+          '/'
+        end
+      end
+
+      # Set authentication context for smart redirects
+      def set_auth_context(context)
+        session[:auth_context] = context
+      end
+
+      # Clear authentication context
+      def clear_auth_context
+        session.delete(:auth_context)
+      end
+
+      # Validate return URL to prevent open redirects
+      def safe_return_url(url, default = '/')
+        return default if url.blank?
+        
+        # Only allow relative URLs or URLs from same domain
+        uri = URI.parse(url)
+        if uri.relative? || (uri.host.nil? || uri.host == request.host)
+          url
+        else
+          default
+        end
+      rescue URI::InvalidURIError
+        default
+      end
+    end
+
   end
 end
 
