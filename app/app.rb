@@ -1036,6 +1036,10 @@ module Rozario
             unless private_area_url?(original_path) || original_path.start_with?('/sessions/')
               session[:original_page] = original_path
               session[:original_page_time] = Time.now.to_i
+            else
+              # If coming from a private area, check if we already have a stored original page
+              # If not, this might be a direct access to private area, so don't store anything
+              # The existing original_page (if any) should be preserved
             end
           end
         rescue URI::InvalidURIError, NoMethodError => e

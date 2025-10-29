@@ -91,10 +91,9 @@ Rozario::App.controllers :user_accounts do
   end
 
   get :profile do
-    # Сохраняем оригинальную страницу перед аутентификацией, если пользователь не авторизован
-    unless current_account
-      store_original_page
-    end
+    # Сохраняем оригинальную страницу перед входом в приватную область
+    # Это нужно делать как для авторизованных, так и для неавторизованных пользователей
+    store_original_page
     
     # Use require_authentication helper for consistent behavior
     require_authentication
@@ -110,10 +109,8 @@ Rozario::App.controllers :user_accounts do
   end
 
   get :edit_profile do
-    # Сохраняем оригинальную страницу, если пользователь не авторизован
-    unless current_account
-      store_original_page
-    end
+    # Сохраняем оригинальную страницу перед входом в приватную область
+    store_original_page
     
     require_authentication
     @user_account = current_account
