@@ -923,6 +923,7 @@ module Rozario
         
         session[:return_to] = location
         session[:return_to_time] = Time.now.to_i
+        puts "DEBUG STORE: stored location=#{location}"
       end
 
       # Redirect back to stored location or default
@@ -937,8 +938,10 @@ module Rozario
         # Check if stored location is still valid (not older than 1 hour)
         if stored_location && stored_time && (Time.now.to_i - stored_time) < 3600
           redirect_location = safe_return_url(stored_location, default)
+          puts "DEBUG REDIRECT: using stored location=#{redirect_location}"
         else
           redirect_location = default
+          puts "DEBUG REDIRECT: using default location=#{redirect_location} (stored expired or missing)"
         end
         
         redirect redirect_location

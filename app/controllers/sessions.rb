@@ -4,8 +4,14 @@ Rozario::App.controllers :sessions do
     if current_account
       redirect url(:user_accounts, :profile)
     else
-      # Store location for return after authentication, unless already stored
-      store_location unless session[:return_to]
+      # Store location for return after authentication
+      # Always try to store the most recent location
+      if request.referer
+        referer_path = URI.parse(request.referer).path rescue nil
+        store_location(referer_path) if referer_path && referer_path != '/sessions/new'
+      else
+        store_location
+      end
       render 'sessions/new'
     end
   end
@@ -28,14 +34,18 @@ Rozario::App.controllers :sessions do
     if user_account = UserAccount.authenticate(params[:email], params[:password])
       set_current_account(user_account)
       
+      # Debug: log session state
+      puts "DEBUG AUTH: return_to=#{session[:return_to]}, auth_context=#{session[:auth_context]}, redirect_url=#{params[:redirect_url]}"
+      
       # Priority: explicit redirect_url > stored return_to > smart default > profile
       if params[:redirect_url]
-        redirect_url = safe_return_url(params[:redirect_url], smart_default_redirect)
+        redirect_url = safe_return_url(params[:redirect_url], url(:user_accounts, :profile))
         clear_stored_location
         clear_auth_context
         redirect redirect_url
       else
-        default_redirect = smart_default_redirect || url(:user_accounts, :profile)
+        # Use smart default only if no stored location exists
+        default_redirect = session[:return_to] ? url(:user_accounts, :profile) : (smart_default_redirect || url(:user_accounts, :profile))
         clear_auth_context
         redirect_back_or_default(default_redirect)
       end
