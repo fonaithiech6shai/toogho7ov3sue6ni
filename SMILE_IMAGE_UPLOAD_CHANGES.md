@@ -67,12 +67,32 @@ bad.txt -> smile_1761707163.jpg (неподдерживаемые форматы
 - Единственный файл сохраняется (экономия дискового пространства)
 - Уникальные имена предотвращают конфликты
 
+### Измененные файлы:
+
+1. **`lib/uploader-smiles.rb`** - основной uploader класс
+2. **`app/helpers/seo_helper.rb`** - обновлена функция `get_smile_image_path`
+
 ### Обратная совместимость:
 
 Изменения не затрагивают:
 - Существующие загруженные файлы
 - Логику отображения в админ-панели и на фронтенде
-- Структуру базы данных
+- Структуру базы данных (MySQL поле `smiles.images`)
 - API endpoints
+- Методы CarrierWave (`images_identifier`, `images.url`, etc.)
 
 Существующие файлы продолжат работать как обычно, новые файлы будут создаваться по новой схеме.
+
+### Коммиты:
+
+1. **e6bb77a** - modify smile image upload to save processed result with unique filename
+2. **c3ac0b4** - update seo_helper to work with new smile image upload system
+
+### Тестирование:
+
+Пройдены интеграционные тесты:
+- Генерация уникальных имен ✔️
+- Функция get_smile_image_path ✔️
+- Schema.org microdata генерация ✔️
+- Обработка крайних случаев ✔️
+- Обратная совместимость ✔️
