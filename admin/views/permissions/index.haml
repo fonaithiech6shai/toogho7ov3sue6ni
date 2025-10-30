@@ -1,0 +1,114 @@
+-content_for :include do
+  =stylesheet_link_tag 'bootstrap-responsive.min.css'
+  =javascript_include_tag 'bootstrap.min.js'
+  =javascript_include_tag 'jquery.colorbox-min.js'
+
+.tabs-content
+  .tab-content.active
+    %h1 Управление правами администраторов
+    
+    %p.description На этой странице вы можете управлять доступом пользователей к различным разделам админ-панели.
+    
+    .form-actions
+      =form_tag url(:permissions, :bulk_update), :method => :post, :class => "form-horizontal bulk-form", :style => "display:none;" do
+        .control-group
+          %label.control-label Модули:
+          .controls.module-checkboxes
+            -@modules.each do |mod|
+              %label.checkbox.inline
+                =check_box_tag "permissions[]", mod, false
+                =humanize_module_name(mod)
+            =hidden_field_tag :account_ids, ""
+        .form-actions
+          =submit_tag "Применить к выбранным", :class => "btn btn-primary"
+          %button.btn.cancel-bulk Отмена
+    
+    .form-actions
+      %button#bulk-edit.btn.btn-info{:style => "display:none;"} Массовое редактирование
+    
+    .row
+      .span12
+        %table#list.table.table-striped.table-hover.table-condensed
+          %thead
+            %tr
+              %th.header
+                %input#select-all{:type => "checkbox"}
+              %th.header ID
+              %th.header Пользователь
+              %th.header Email
+              %th.header Роль
+              %th.header Модули (кол-во)
+              %th.header Права
+              %th.header Действия
+          %tbody
+            -@accounts.each do |account|
+              %tr
+                %td
+                  =check_box_tag "account_select", account.id, false, :class => "account-checkbox"
+                %td=account.id
+                %td=account.display_name
+                %td=account.email
+                %td
+                  %span.label{:class => role_class(account.role)}
+                    =account.role
+                %td
+                  -if account.role == 'admin'
+                    %span.label.label-success Все (без ограничений)
+                  -else
+                    %span.badge.badge-info=account.permissions.size
+                %td
+                  -if account.role == 'admin'
+                    %span.text-success Полные права
+                  -else
+                    .permissions-preview{:title => account.permissions.map{|p| humanize_module_name(p)}.join(', ')}
+                      -if account.permissions.any?
+                        -account.permissions.first(3).each do |perm|
+                          %span.label.label-info.permission-tag
+                            =humanize_module_name(perm)
+                        -if account.permissions.size > 3
+                          %span.label ... и ещё #{account.permissions.size - 3}
+                      -else
+                        %span.text-muted Нет прав
+                %td
+                  =link_to pat(:edit), url(:permissions, :edit, :id => account.id), :class => "btn btn-primary btn-small"
+    
+:javascript
+  $(document).ready(function() {
+    // Массовое выделение
+    $('#select-all').change(function() {
+      $('.account-checkbox').prop('checked', $(this).is(':checked'));
+      updateBulkButton();
+    });
+    
+    $('.account-checkbox').change(function() {
+      updateBulkButton();
+      var allChecked = $('.account-checkbox').length === $('.account-checkbox:checked').length;
+      $('#select-all').prop('checked', allChecked);
+    });
+    
+    function updateBulkButton() {
+      var checkedCount = $('.account-checkbox:checked').length;
+      if (checkedCount > 0) {
+        $('#bulk-edit').show().text('Массовое редактирование (' + checkedCount + ')');
+      } else {
+        $('#bulk-edit').hide();
+      }
+    }
+    
+    // Показ формы массового редактирования
+    $('#bulk-edit').click(function() {
+      var selectedIds = $('.account-checkbox:checked').map(function() {
+        return $(this).val();
+      }).get();
+      
+      $('#account_ids').val(selectedIds.join(','));
+      $('.bulk-form').show();
+      $(this).hide();
+    });
+    
+    $('.cancel-bulk').click(function(e) {
+      e.preventDefault();
+      $('.bulk-form').hide();
+      updateBulkButton();
+    });
+  });

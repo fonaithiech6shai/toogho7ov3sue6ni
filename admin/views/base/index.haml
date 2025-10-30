@@ -1,6 +1,33 @@
 - # encoding: utf-8
 .base-text
   %p Добро пожаловать в панель администрирования сайта самого лучшего в мире магазина цветов «Розарио»!
+  
+  -if current_account
+    %p
+      %strong Пользователь: 
+      =current_account.display_name
+      %span.label{:class => role_class(current_account.role)}
+        =current_account.role
+        
+    -if can_manage_permissions?
+      .alert.alert-info
+        %strong Управление правами:
+        =link_to "Настроить права доступа", url(:permissions, :index), :class => "btn btn-info btn-small", :style => "margin-left: 10px;"
+        
+    %h3 Доступные разделы:
+    .available-modules
+      -if @available_modules && @available_modules.any?
+        .row
+          -@available_modules.each_with_index do |mod, index|
+            -if index % 4 == 0
+              .row
+            .span3
+              .module-card
+                %h4=humanize_module_name(mod)
+                %p.module-code=mod
+                =link_to "Перейти", "/admin/#{mod}", :class => "btn btn-primary btn-small"
+      -else
+        .alert.alert-warning У вас нет доступа ни к одному разделу. Обратитесь к администратору.
 
 .base-icons
   .btn-group
@@ -34,3 +61,25 @@
     =link_to "Календарь (заказы)", url(:disabled_dates, :index)
   %h2{:style => "display:inline;margin-right:12px;line-height:1.65;margin-right:30px;"}
     =link_to "Способы оплаты", url(:payment_methods, :index)
+
+:css
+  .module-card {
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    background: #f9f9f9;
+    text-align: center;
+  }
+  .module-card h4 {
+    margin: 0 0 10px 0;
+    color: #333;
+  }
+  .module-code {
+    color: #999;
+    font-size: 12px;
+    margin: 5px 0;
+  }
+  .available-modules .row {
+    margin-bottom: 10px;
+  }

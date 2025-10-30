@@ -77,46 +77,42 @@ module Rozario
     # # layout  :my_layout              # Layout can be in views/layouts/foo.ext or views/foo.ext (default :application)
     # #
 
-    # set :admin_model, 'Account'
-    # set :login_page,  '/admin/sessions/new'
+    set :admin_model, 'Account'
+    set :login_page,  '/admin/sessions/new'
 
-    # set :protection, false
-    # #set :protect_from_csrf, false
-    # #set :allow_disabled_csrf, true
+    set :protection, false
+    #set :protect_from_csrf, false
+    #set :allow_disabled_csrf, true
 
-    # enable :sessions
-    # enable :authentication
-    # disable :store_location
+    enable :sessions
+    enable :authentication
+    disable :store_location
 
-    # access_control.roles_for :any do |role|
-    #   role.protect '/'
-    #   role.allow   '/sessions'
-    # end
+    # Базовая защита для всех пользователей
+    access_control.roles_for :any do |role|
+      role.protect '/'
+      role.allow   '/sessions'
+    end
 
-    # access_control.roles_for :admin do |role|
-    #   role.project_module :menus_on_main,  '/menus_on_main'
-    #   role.project_module :discounts,      '/discounts'
-    #   role.project_module :delivery,       '/delivery'
-    #   role.project_module :regions,        '/regions'
-    #   role.project_module :categorygroups, '/categorygroups'
-    #   role.project_module :complects,      '/complects'
-    #   role.project_module :pages,          '/pages'
-    #   role.project_module :categories,     '/categories'
-    #   role.project_module :products,       '/products'
-    #   role.project_module :news,           '/news'
-    #   role.project_module :articles,       '/articles'
-    #   role.project_module :photos,         '/photos'
-    #   role.project_module :albums,         '/albums'
-    #   role.project_module :comments,       '/comments'
-    #   role.project_module :contacts,       '/contacts'
-    #   # role.project_module :options,        '/options'
-    #   role.project_module :clients,        '/clients'
-    #   role.project_module :accounts,       '/accounts'
-    #   role.project_module :seo,            '/seo'
-    #   role.project_module :smiles,         '/smiles'
-    #   role.project_module :disabled_dates, '/disabled_dates'
-    #   role.project_module :payment,        '/payment'
-    # end
+    # Динамические права на основе permissions пользователя
+    access_control.roles_for :admin, :manager, :editor do |role, user|
+      if user && user.role == 'admin'
+        # Админы имеют доступ ко всем модулям
+        Account::AVAILABLE_MODULES.each do |mod|
+          role.project_module mod.to_sym, "/#{mod}"
+        end
+        role.project_module :permissions, '/permissions' # Управление правами только для админов
+      elsif user
+        # Остальные пользователи - только к разрешенным модулям
+        user.permissions.each do |perm|
+          role.project_module perm.to_sym, "/#{perm}"
+        end
+        # Доступ к управлению правами только если есть права на accounts
+        if user.has_permission?('accounts')
+          role.project_module :permissions, '/permissions'
+        end
+      end
+    end
 
     # # Custom error management
     # error(403) { @title = "Error 403"; render('errors/403', :layout => :error) }

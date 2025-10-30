@@ -1,0 +1,111 @@
+-content_for :include do
+  =stylesheet_link_tag 'bootstrap-responsive.min.css'
+  =javascript_include_tag 'bootstrap.min.js'
+
+.tabs-content
+  .tab-content.active
+    %h1 Редактирование прав пользователя
+    
+    .user-info.well
+      %h3=@account.display_name
+      %p 
+        %strong Email: 
+        =@account.email
+      %p 
+        %strong Роль: 
+        %span.label{:class => role_class(@account.role)}
+          =@account.role
+      -if @account.role == 'admin'
+        .alert.alert-info
+          %strong Внимание!
+          Администраторы имеют полные права доступа ко всем разделам независимо от настроек ниже.
+    
+    =form_for :account, url(:permissions, :update, :id => @account.id), :method => :put, :class => "form-horizontal" do |f|
+      .control-group
+        %label.control-label Доступные модули:
+        .controls
+          .row
+            .span12
+              .permissions-grid
+                -@modules.each_with_index do |mod, index|
+                  .permission-item{:class => (index % 3 == 0) ? 'clear' : ''}
+                    %label.checkbox
+                      =check_box_tag "permissions[]", mod, @current_permissions.include?(mod), :id => "perm_#{mod}"
+                      %span.module-name=humanize_module_name(mod)
+                      %small.module-code (#{mod})
+          
+          .form-actions.permission-actions
+            %button.btn.btn-mini.select-all{тип => :button} Выбрать все
+            %button.btn.btn-mini.select-none{тип => :button} Очистить все
+            %button.btn.btn-mini.select-common{тип => :button} Обычные модули
+      
+      .form-actions
+        =f.submit пат(:save), :class => "btn btn-primary"
+        =link_to пат(:cancel), url(:permissions, :index), :class => "btn"
+
+:css
+  .permissions-grid {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 10px;
+    background: #fafafa;
+  }
+  .permission-item {
+    float: left;
+    width: 30%;
+    margin: 0 1.5% 10px 1.5%;
+    padding: 8px;
+    background: white;
+    border: 1px solid #e3e3e3;
+    border-radius: 3px;
+  }
+  .permission-item.clear {
+    clear: left;
+  }
+  .permission-item label {
+    margin: 0;
+    font-weight: normal;
+  }
+  .module-name {
+    font-weight: bold;
+    color: #333;
+  }
+  .module-code {
+    color: #999;
+    display: block;
+    font-size: 11px;
+  }
+  .permission-actions {
+    margin: 10px 0 0 0;
+    padding: 10px 0 0 0;
+    border-top: 1px solid #ddd;
+  }
+  .user-info {
+    margin-bottom: 20px;
+  }
+  .user-info h3 {
+    margin-top: 0;
+  }
+
+:javascript
+  $(document).ready(function() {
+    $('.select-all').click(function(e) {
+      e.preventDefault();
+      $('input[name="permissions[]"]').prop('checked', true);
+    });
+    
+    $('.select-none').click(function(e) {
+      e.preventDefault();
+      $('input[name="permissions[]"]').prop('checked', false);
+    });
+    
+    $('.select-common').click(function(e) {
+      e.preventDefault();
+      var commonModules = ['products', 'categories', 'orders', 'comments', 'news', 'pages'];
+      $('input[name="permissions[]"]').prop('checked', false);
+      commonModules.forEach(function(module) {
+        $('#perm_' + module).prop('checked', true);
+      });
+    });
+  });
