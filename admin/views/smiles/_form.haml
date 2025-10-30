@@ -58,7 +58,7 @@
 %fieldset.control-group{:class => error ? 'has-error' : ''}
   =f.label "Дата", :class => 'control-label'
   .controls
-    =f.text_field :date, :class => 'input-xlarge input-with-feedback', :placeholder => 'Например: 15 марта 2024'
+    =f.text_field :date, :class => 'input-xlarge input-with-feedback', :placeholder => 'Например: 15 марта 2024', :id => 'smile_date'
     %span.help-inline=error ? f.error_message_on(:date, :class => 'text-error') : 'Дата в произвольном текстовом формате'
 
 -# Поле date убрано - автоматически устанавливается NULL при сохранении
@@ -629,12 +629,26 @@
       
       // Поле даты (автоматическое заполнение из d2_date заказа)
       var dateField = document.getElementById('smile_date');
-      if (dateField && (!dateField.value || dateField.value.trim() === '')) {
-        // Получаем d2_date из заказа через AJAX
-        var orderId = orderIdField.value.trim();
-        if (orderId && orderId !== '') {
-          fetchOrderDateAndFill(orderId, dateField);
+      console.log('Поле date найдено:', dateField);
+      
+      if (dateField) {
+        console.log('Текущее значение поля date:', dateField.value);
+        
+        if (!dateField.value || dateField.value.trim() === '') {
+          // Получаем d2_date из заказа через AJAX
+          var orderId = orderIdField.value.trim();
+          console.log('Номер заказа для заполнения даты:', orderId);
+          
+          if (orderId && orderId !== '') {
+            fetchOrderDateAndFill(orderId, dateField);
+          } else {
+            console.log('Номер заказа пустой, автозаполнение не выполняется');
+          }
+        } else {
+          console.log('Поле date уже заполнено, автозаполнение пропущено');
         }
+      } else {
+        console.error('Поле date не найдено на странице!');
       }
       
       // Поле H1 (в любом случае при наличии номера заказа)
@@ -838,6 +852,13 @@
         hideOrderInfo();
         hideError();
         return;
+      }
+      
+      // Автозаполнение поля даты
+      var dateField = document.getElementById('smile_date');
+      if (dateField && (!dateField.value || dateField.value.trim() === '')) {
+        console.log('Автозаполнение даты для заказа:', orderId);
+        fetchOrderDateAndFill(orderId, dateField);
       }
       
       fetchOrderProducts(orderId);

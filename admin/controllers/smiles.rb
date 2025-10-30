@@ -495,6 +495,12 @@ Rozario::Admin.controllers :smiles do
   end
 end
 
+  # Тестовая страница для проверки автозаполнения даты
+  get :test_date_api do
+    @title = "Тест API автозаполнения даты"
+    erb :test_date_api, :layout => false
+  end
+  
   # Тестовый метод для проверки форматирования дат (только для разработки)
   get :test_date_format do
     content_type :json
