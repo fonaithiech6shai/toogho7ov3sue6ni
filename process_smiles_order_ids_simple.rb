@@ -30,6 +30,10 @@ class Order < ActiveRecord::Base
   # Ничего не требуется
 end
 
+class Seo < ActiveRecord::Base
+  # Ничего не требуется
+end
+
 class SmilesOrderIdProcessor
   
   def self.process_all_smiles
@@ -41,6 +45,7 @@ class SmilesOrderIdProcessor
     
     processed_count = 0
     updated_count = 0
+    seo_updated_count = 0
     
     # Перебираем все smiles в цикле
     Smile.find_each(batch_size: 100) do |smile|
@@ -50,6 +55,10 @@ class SmilesOrderIdProcessor
       
       # Получаем значение order_eight_digit_id
       current_order_id = smile.order_eight_digit_id
+      
+      # Обрабатываем SEO запись
+      seo_result = process_seo_record(smile)
+      seo_updated_count += 1 if seo_result
       
       if current_order_id.is_a?(Numeric) && !current_order_id.nil?
         puts "  order_eight_digit_id = #{current_order_id} (число) => continue"
@@ -78,17 +87,56 @@ class SmilesOrderIdProcessor
       
       # Показываем прогресс каждые 10 объектов
       if processed_count % 10 == 0
-        puts "\n--- Прогресс: #{processed_count}/#{smiles_count} (обновлено: #{updated_count}) ---"
+        puts "\n--- Прогресс: #{processed_count}/#{smiles_count} (обновлено smile: #{updated_count}, SEO: #{seo_updated_count}) ---"
       end
     end
     
     puts "\n=== ЗАВЕРШЕНО ==="
     puts "Всего обработано: #{processed_count}"
-    puts "Обновлено: #{updated_count}"
-    puts "Пропущено: #{processed_count - updated_count}"
+    puts "Обновлено smile: #{updated_count}"
+    puts "Обновлено SEO: #{seo_updated_count}"
+    puts "Пропущено smile: #{processed_count - updated_count}"
   end
   
   private
+  
+  def self.process_seo_record(smile)
+    puts "    Обработка SEO для smile ID: #{smile.id}"
+    
+    # Проверяем наличие seo_id
+    if smile.seo_id.nil?
+      puts "      seo_id = NULL => пропускаем"
+      return false
+    end
+    
+    puts "      seo_id = #{smile.seo_id} => ищем запись seo"
+    
+    # Ищем запись seo
+    seo_record = Seo.find_by_id(smile.seo_id)
+    
+    if seo_record.nil?
+      puts "      ✗ Запись seo с id = #{smile.seo_id} не найдена"
+      return false
+    end
+    
+    puts "      ✓ Запись seo найдена, текущий seo.index = #{seo_record.index.inspect}"
+    
+    # Проверяем текущее значение index
+    if seo_record.index == 1
+      puts "      seo.index уже = 1 => обновление не требуется"
+      return false
+    end
+    
+    # Обновляем index = 1
+    begin
+      seo_record.update_attribute(:index, 1)
+      puts "      ✓ Установлен seo.index = 1 (разрешена индексация)"
+      return true
+    rescue => e
+      puts "      ✗ Ошибка обновления seo.index: #{e.message}"
+      return false
+    end
+  end
   
   def self.generate_unique_eight_digit_id
     max_attempts = 1000 # Максимум попыток для избежания бесконечного цикла
