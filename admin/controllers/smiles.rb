@@ -1,6 +1,69 @@
 # encoding: utf-8
 Rozario::Admin.controllers :smiles do
 
+  # Хелпер для форматирования даты в русском формате
+  def format_russian_date(date_string)
+    return nil if date_string.blank?
+    
+    begin
+      # Парсим дату из строки или объекта Date/DateTime
+      if date_string.is_a?(String)
+        if date_string.include?('/')
+          # Формат d/m/Y или dd/mm/yyyy
+          parsed_date = Date.strptime(date_string, '%d/%m/%Y')
+        else
+          # Пробуем стандартное форматирование
+          parsed_date = Date.parse(date_string)
+        end
+      else
+        parsed_date = date_string.to_date
+      end
+      
+      # Массивы для русских названий месяцев
+      russian_months = {
+        1 => 'января', 2 => 'февраля', 3 => 'марта', 4 => 'апреля',
+        5 => 'мая', 6 => 'июня', 7 => 'июля', 8 => 'августа',
+        9 => 'сентября', 10 => 'октября', 11 => 'ноября', 12 => 'декабря'
+      }
+      
+      day = parsed_date.day
+      month = russian_months[parsed_date.month]
+      year = parsed_date.year
+      
+      return "#{day} #{month} #{year} года"
+    rescue => e
+      puts "ОШИБКА форматирования даты #{date_string}: #{e.message}"
+      return nil
+    end
+  end
+  
+  # Хелпер для автоматического заполнения даты из заказа
+  def auto_fill_date_from_order(order_eight_digit_id, current_date = nil)
+    # Если дата уже заполнена, не перезаписываем
+    return current_date if current_date.present? && current_date.strip != ''
+    
+    return nil if order_eight_digit_id.blank?
+    
+    begin
+      order = Order.find_by_eight_digit_id(order_eight_digit_id.to_i)
+      return nil if order.nil?
+      
+      # Получаем d2_date из заказа
+      d2_date = order.d2_date
+      return nil if d2_date.blank?
+      
+      # Форматируем дату в русский формат
+      formatted_date = format_russian_date(d2_date)
+      
+      puts "DEBUG: Автозаполнение даты для заказа #{order_eight_digit_id}: #{d2_date} => #{formatted_date}"
+      
+      return formatted_date
+    rescue => e
+      puts "ОШИБКА получения даты заказа #{order_eight_digit_id}: #{e.message}"
+      return nil
+    end
+  end
+
   get :index do
     filter = params[:filter]
     @title = "Улыбки наших покупателей"
@@ -54,8 +117,12 @@ Rozario::Admin.controllers :smiles do
     puts "DEBUG CREATE: published checkbox #{smile_params.has_key?('published') ? 'checked' : 'unchecked'}, raw: #{published_value.inspect}, final: #{published_int}"
     puts "DEBUG CREATE: date field value: #{allowed_params['date'].inspect}"
     
-    # Сохраняем поле date как есть (текстовое поле для произвольной даты)
-    # allowed_params['date'] уже содержит значение из формы
+    # Автоматическое заполнение даты из заказа при указании order_eight_digit_id
+    if allowed_params['order_eight_digit_id'].present? && allowed_params['order_eight_digit_id'].to_s.strip != ''
+      auto_filled_date = auto_fill_date_from_order(allowed_params['order_eight_digit_id'], allowed_params['date'])
+      allowed_params['date'] = auto_filled_date if auto_filled_date.present?
+      puts "DEBUG CREATE: Автозаполнение даты: #{auto_filled_date}"
+    end
     
     # Логика для json_order: если указан номер заказа, используем NULL
     @smile = Smile.new(allowed_params)
@@ -154,8 +221,12 @@ Rozario::Admin.controllers :smiles do
     puts "DEBUG UPDATE: published checkbox #{smile_params.has_key?('published') ? 'checked' : 'unchecked'}, raw: #{published_value.inspect}, final: #{published_int}"
     puts "DEBUG UPDATE: date field value: #{allowed_params['date'].inspect}"
     
-    # Сохраняем поле date как есть (текстовое поле для произвольной даты)
-    # allowed_params['date'] уже содержит значение из формы
+    # Автоматическое заполнение даты из заказа при указании order_eight_digit_id
+    if allowed_params['order_eight_digit_id'].present? && allowed_params['order_eight_digit_id'].to_s.strip != ''
+      auto_filled_date = auto_fill_date_from_order(allowed_params['order_eight_digit_id'], allowed_params['date'])
+      allowed_params['date'] = auto_filled_date if auto_filled_date.present?
+      puts "DEBUG UPDATE: Автозаполнение даты: #{auto_filled_date}"
+    end
     
     # Логика для json_order: если указан номер заказа, используем NULL
     if allowed_params['order_eight_digit_id'].present? && allowed_params['order_eight_digit_id'].to_s.strip != ''
@@ -338,3 +409,25 @@ Rozario::Admin.controllers :smiles do
     end
   end
 end
+
+  # Тестовый метод для проверки форматирования дат (только для разработки)
+  get :test_date_format do
+    content_type :json
+    
+    test_dates = [
+      '15/09/2023',
+      '01/12/2024', 
+      '28/02/2025',
+      DateTime.now,
+      Date.today
+    ]
+    
+    results = test_dates.map do |date|
+      {
+        input: date.to_s,
+        formatted: format_russian_date(date)
+      }
+    end
+    
+    { test_results: results }.to_json
+  end
