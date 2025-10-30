@@ -251,8 +251,8 @@ end %>
       <div id="qar_l"><img class="transition" id="ar_l" src="/images/arrow/ar_l.png" /></div>
       <div id="qar_r"><img class="transition" id="ar_r" src="/images/arrow/ar_r.png" /></div>
       <% if @post.date && !@post.date.strip.empty? %>
-      <div class="ttlll">
-        <h2 style="color:#FFF; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 3px; display: inline-block;"><%=@post.date%></h2>
+      <div class="ttlll" style="display: flex; align-items: center; justify-content: center;">
+        <h2 style="color:#FFF; padding: 5px 10px; border-radius: 3px; display: inline-block;"><%=@post.date%></h2>
       </div>
       <% end %>
       <a href="<%=link1%>" style="display: block; position: absolute; top: 0; bottom: 0; right: 0; left: 25%;"></a>
