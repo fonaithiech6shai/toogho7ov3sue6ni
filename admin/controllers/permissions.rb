@@ -35,57 +35,6 @@ Rozario::Admin.controllers :permissions do
     end
   end
   
-  private
-  
-  # Безопасное кодирование данных аккаунта
-  def safe_encode_account(account)
-    # Обрабатываем строковые поля
-    ['name', 'surname', 'email'].each do |field|
-      value = account.send(field)
-      if value && value.is_a?(String)
-        account.send("#{field}=", safe_string_convert(value))
-      end
-    end
-    
-    account
-  rescue => e
-    # Если не можем обработать - создаём fallback
-    fallback_account = OpenStruct.new(
-      id: account.id || 0,
-      name: "[Ошибка кодировки]",
-      surname: "",
-      email: "error@example.com",
-      role: account.role || 'editor',
-      permissions: [],
-      display_name: "[Ошибка кодировки]"
-    )
-    
-    # Добавляем методы, которые использует шаблон
-    fallback_account.define_singleton_method(:has_permission?) { |mod| false }
-    fallback_account.define_singleton_method(:add_permission) { |mod| false }
-    fallback_account.define_singleton_method(:remove_permission) { |mod| false }
-    fallback_account.define_singleton_method(:save) { false }
-    
-    fallback_account
-  end
-  
-  # Безопасное преобразование строки
-  def safe_string_convert(str)
-    return str if str.nil? || str.empty?
-    return str if str.encoding == Encoding::UTF_8 && str.valid_encoding?
-    
-    begin
-      # Пробуем Windows-1251 -> UTF-8
-      str.dup.force_encoding('Windows-1251').encode('UTF-8', 
-        invalid: :replace, undef: :replace, replace: '?')
-    rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError
-      # Последняя попытка
-      str.to_s.encode('UTF-8', invalid: :replace, undef: :replace, replace: '?')
-    rescue => e
-      "[Ошибка кодировки]"
-    end
-  end
-  
   # Максимально безопасная загрузка аккаунтов
   def load_accounts_via_sql
     begin
@@ -159,6 +108,59 @@ Rozario::Admin.controllers :permissions do
       [create_fallback_account(1, "Ошибка загрузки: #{e.message}")]
     end
   end
+  
+  private
+  
+  # Безопасное кодирование данных аккаунта
+  def safe_encode_account(account)
+    # Обрабатываем строковые поля
+    ['name', 'surname', 'email'].each do |field|
+      value = account.send(field)
+      if value && value.is_a?(String)
+        account.send("#{field}=", safe_string_convert(value))
+      end
+    end
+    
+    account
+  rescue => e
+    # Если не можем обработать - создаём fallback
+    fallback_account = OpenStruct.new(
+      id: account.id || 0,
+      name: "[Ошибка кодировки]",
+      surname: "",
+      email: "error@example.com",
+      role: account.role || 'editor',
+      permissions: [],
+      display_name: "[Ошибка кодировки]"
+    )
+    
+    # Добавляем методы, которые использует шаблон
+    fallback_account.define_singleton_method(:has_permission?) { |mod| false }
+    fallback_account.define_singleton_method(:add_permission) { |mod| false }
+    fallback_account.define_singleton_method(:remove_permission) { |mod| false }
+    fallback_account.define_singleton_method(:save) { false }
+    
+    fallback_account
+  end
+  
+  # Безопасное преобразование строки
+  def safe_string_convert(str)
+    return str if str.nil? || str.empty?
+    return str if str.encoding == Encoding::UTF_8 && str.valid_encoding?
+    
+    begin
+      # Пробуем Windows-1251 -> UTF-8
+      str.dup.force_encoding('Windows-1251').encode('UTF-8', 
+        invalid: :replace, undef: :replace, replace: '?')
+    rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError
+      # Последняя попытка
+      str.to_s.encode('UTF-8', invalid: :replace, undef: :replace, replace: '?')
+    rescue => e
+      "[Ошибка кодировки]"
+    end
+  end
+  
+  # Максимально безопасная загрузка аккаунтов
   
   # Максимально безопасное преобразование строки
   def ultra_safe_string(value)
