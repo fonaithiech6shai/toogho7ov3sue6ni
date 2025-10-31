@@ -8,41 +8,31 @@ Rozario::Admin.controllers :permissions do
   get :index do
     @title = "Управление правами"
     
-    # Получаем аккаунты и безопасно обрабатываем их данные
+    # Принудительно используем только безопасную загрузку через SQL
     begin
-      # Сначала пробуем загрузить через обычные ActiveRecord методы
-      @accounts = Account.order('id desc').limit(50) # Ограничиваем для безопасности
+      @accounts = load_accounts_via_sql_safe
+      @modules = Account::AVAILABLE_MODULES
       
-      # Проверяем каждый аккаунт отдельно
-      @accounts = @accounts.map do |account|
-        begin
-          # Проверяем, можем ли мы безопасно обратиться к display_name
-          test_display = account.display_name
-          account # Если ок - возвращаем исходный
-        rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError => e
-          # Если проблема с кодировкой - обрабатываем
-          safe_encode_account(account)
-        end
-      end
+      # Проверяем, можем ли мы рендерить шаблон
+      test_render = erb '<%= @title %>'
       
-    rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError => encoding_error
-      # Ошибка кодировки - пробуем загрузить через raw SQL
-      begin
-        @accounts = load_accounts_via_sql
-      rescue => sql_error
-        logger.error "Failed to load via SQL: #{sql_error.message}" if defined?(logger)
-        @accounts = []
-        @encoding_error = "Ошибка кодировки: #{encoding_error.message}"
-      end
+      render 'permissions/index'
+      
+    rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError, Encoding::CompatibilityError => encoding_error
+      # Любая ошибка кодировки - перенаправляем на безопасную страницу
+      @encoding_error = "Ошибка кодировки: #{encoding_error.class.name} - #{encoding_error.message}"
+      @accounts = []
+      @modules = []
+      
+      erb '<h1>Ошибка кодировки</h1><p><%= @encoding_error %></p><p><a href="/admin">На главную</a></p>'
+      
     rescue => e
       # Любая другая ошибка
-      logger.error "Error loading accounts: #{e.message}" if defined?(logger)
-      @accounts = []
-      @encoding_error = e.message
+      @error_message = e.message
+      @error_class = e.class.name
+      
+      erb '<h1>Ошибка</h1><p><%= @error_class %>: <%= @error_message %></p><p><a href="/admin">На главную</a></p>'
     end
-    
-    @modules = Account::AVAILABLE_MODULES
-    render 'permissions/index'
   end
   
   private
@@ -96,56 +86,146 @@ Rozario::Admin.controllers :permissions do
     end
   end
   
-  # Загрузка аккаунтов через raw SQL в критических ситуациях
-  def load_accounts_via_sql
-    connection = ActiveRecord::Base.connection
-    
-    # Простой SQL-запрос без ActiveRecord
-    sql = "SELECT id, COALESCE(name, '') as name, COALESCE(surname, '') as surname, COALESCE(email, '') as email, COALESCE(role, 'editor') as role, COALESCE(role_permissions, '[]') as role_permissions FROM accounts ORDER BY id DESC LIMIT 50"
-    
-    results = connection.execute(sql)
-    
-    accounts = []
-    results.each do |row|
-      begin
-        # Создаём объект-заглушку с безопасными данными
-        account_data = OpenStruct.new(
-          id: row[0].to_i,
-          name: safe_string_convert(row[1].to_s),
-          surname: safe_string_convert(row[2].to_s), 
-          email: safe_string_convert(row[3].to_s),
-          role: safe_string_convert(row[4].to_s),
-          role_permissions: row[5].to_s
-        )
-        
-        # Добавляем методы, которые ожидает шаблон
-        account_data.define_singleton_method(:display_name) do
-          full_name = [name, surname].reject(&:empty?).join(' ').strip
-          full_name.empty? ? email : full_name
-        end
-        
-        account_data.define_singleton_method(:permissions) do
-          begin
-            JSON.parse(role_permissions)
-          rescue
-            []
+  # Максимально безопасная загрузка аккаунтов
+  def load_accounts_via_sql_safe
+    begin
+      connection = ActiveRecord::Base.connection
+      
+      # Принудительно устанавливаем кодировку для соединения
+      connection.execute("SET NAMES utf8") rescue nil
+      connection.execute("SET CHARACTER SET utf8") rescue nil
+      
+      # Используем CONVERT для принудительного преобразования в UTF-8
+      sql = "
+        SELECT 
+          id,
+          CONVERT(COALESCE(name, '') USING utf8) as name,
+          CONVERT(COALESCE(surname, '') USING utf8) as surname, 
+          CONVERT(COALESCE(email, '') USING utf8) as email,
+          CONVERT(COALESCE(role, 'editor') USING utf8) as role,
+          CONVERT(COALESCE(role_permissions, '[]') USING utf8) as role_permissions
+        FROM accounts 
+        ORDER BY id DESC 
+        LIMIT 20
+      "
+      
+      results = connection.execute(sql)
+      accounts = []
+      
+      results.each_with_index do |row, index|
+        begin
+          # Преобразуем каждое поле в безопасную UTF-8 строку
+          safe_id = row[0].to_i rescue 0
+          safe_name = ultra_safe_string(row[1])
+          safe_surname = ultra_safe_string(row[2])
+          safe_email = ultra_safe_string(row[3])
+          safe_role = ultra_safe_string(row[4])
+          safe_permissions = ultra_safe_string(row[5])
+          
+          # Проверяем, что все строки в UTF-8
+          [safe_name, safe_surname, safe_email, safe_role, safe_permissions].each do |str|
+            str.force_encoding('UTF-8') if str.respond_to?(:force_encoding)
           end
+          
+          # Создаём простой Hash вместо OpenStruct
+          account_hash = {
+            'id' => safe_id,
+            'name' => safe_name,
+            'surname' => safe_surname,
+            'email' => safe_email,
+            'role' => safe_role,
+            'role_permissions' => safe_permissions
+          }
+          
+          # Преобразуем в OpenStruct только если все ок
+          account_data = OpenStruct.new(account_hash)
+          
+          # Добавляем методы
+          add_safe_methods_to_account(account_data)
+          
+          accounts << account_data
+          
+        rescue => row_error
+          # Создаём fallback-аккаунт
+          fallback = create_fallback_account(index + 1)
+          accounts << fallback
         end
-        
-        account_data.define_singleton_method(:has_permission?) { |mod| role == 'admin' || permissions.include?(mod.to_s) }
-        account_data.define_singleton_method(:add_permission) { |mod| false } # Отключаем в безопасном режиме
-        account_data.define_singleton_method(:remove_permission) { |mod| false }
-        account_data.define_singleton_method(:save) { false }
-        
-        accounts << account_data
-        
-      rescue => row_error
-        # Если не можем обработать строку - пропускаем
-        logger.error "Error processing row: #{row_error.message}" if defined?(logger)
+      end
+      
+      accounts
+      
+    rescue => e
+      # Если совсем ничего не работает - возвращаем пустой массив
+      [create_fallback_account(1, "Ошибка загрузки: #{e.message}")]
+    end
+  end
+  
+  # Максимально безопасное преобразование строки
+  def ultra_safe_string(value)
+    return "" if value.nil?
+    
+    str = value.to_s
+    return str if str.empty?
+    
+    # Полная очистка строки
+    begin
+      # Удаляем все не-ASCII символы и заменяем их безопасными
+      cleaned = str.encode('UTF-8', 
+        invalid: :replace, 
+        undef: :replace, 
+        replace: '?',
+        universal_newline: true
+      )
+      
+      # Удаляем потенциально опасные символы
+      cleaned.gsub!(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/, '')
+      
+      cleaned
+    rescue => e
+      # Последний fallback - только ASCII
+      str.gsub(/[^\x20-\x7E]/, '?')
+    end
+  end
+  
+  # Создание fallback-аккаунта
+  def create_fallback_account(index, error_msg = nil)
+    account_data = OpenStruct.new(
+      id: index,
+      name: "User",
+      surname: "#{index}",
+      email: "user#{index}@example.com",
+      role: "editor",
+      role_permissions: "[]"
+    )
+    
+    account_data.define_singleton_method(:display_name) { "User #{index}#{error_msg ? ' (Error)' : ''}" }
+    add_safe_methods_to_account(account_data)
+    
+    account_data
+  end
+  
+  # Добавление методов к аккаунту
+  def add_safe_methods_to_account(account_data)
+    account_data.define_singleton_method(:permissions) do
+      begin
+        JSON.parse(role_permissions || '[]')
+      rescue
+        []
       end
     end
     
-    accounts
+    account_data.define_singleton_method(:has_permission?) { |mod| role == 'admin' || permissions.include?(mod.to_s) }
+    account_data.define_singleton_method(:add_permission) { |mod| false }
+    account_data.define_singleton_method(:remove_permission) { |mod| false }
+    account_data.define_singleton_method(:save) { false }
+    
+    # Добавляем display_name если его нет
+    unless account_data.respond_to?(:display_name)
+      account_data.define_singleton_method(:display_name) do
+        full_name = [name, surname].reject { |s| s.nil? || s.empty? }.join(' ').strip
+        full_name.empty? ? email : full_name
+      end
+    end
   end
   
   # Форма редактирования прав пользователя

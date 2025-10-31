@@ -5,7 +5,7 @@ module Rozario
     use ActiveRecord::ConnectionAdapters::ConnectionManagement
     
     # Глобальная обработка ошибок кодировки
-    error Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError do
+    error Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError, Encoding::CompatibilityError do
       logger.error "Encoding error: #{env['REQUEST_PATH']} - #{request.env['REQUEST_METHOD']}" if defined?(logger)
       
       # Перенаправляем на безопасную версию страницы
