@@ -57,35 +57,63 @@
                 .controls
                   -@modules.each do |module_name|
                     -begin
-                      -module_display = case module_name
+                      -case module_name
                       -when 'accounts'
-                        'User Accounts'
+                        -module_display = 'User Accounts'
                       -when 'products' 
-                        'Products'
+                        -module_display = 'Products'
                       -when 'categories'
-                        'Categories'
+                        -module_display = 'Categories'
                       -when 'orders'
-                        'Orders'
+                        -module_display = 'Orders'
                       -when 'comments'
-                        'Comments'
+                        -module_display = 'Comments'
                       -when 'news'
-                        'News'
+                        -module_display = 'News'
                       -when 'articles'
-                        'Articles'
+                        -module_display = 'Articles'
                       -when 'pages'
-                        'Pages'
+                        -module_display = 'Pages'
                       -when 'clients'
-                        'Clients'
+                        -module_display = 'Clients'
                       -when 'contacts'
-                        'Contacts'
+                        -module_display = 'Contacts'
                       -when 'seo'
-                        'SEO'
+                        -module_display = 'SEO'
                       -when 'payment'
-                        'Payments'
+                        -module_display = 'Payments'
                       -when 'smiles'
-                        'Reviews (Smiles)'
+                        -module_display = 'Reviews (Smiles)'
+                      -when 'regions'
+                        -module_display = 'Regions'
+                      -when 'delivery'
+                        -module_display = 'Delivery'
+                      -when 'discounts'
+                        -module_display = 'Discounts'
+                      -when 'categorygroups'
+                        -module_display = 'Category Groups'
+                      -when 'complects'
+                        -module_display = 'Complects'
+                      -when 'menus_on_main'
+                        -module_display = 'Main Menu'
+                      -when 'photos'
+                        -module_display = 'Photos'
+                      -when 'albums'
+                        -module_display = 'Albums'
+                      -when 'slides'
+                        -module_display = 'Slides'
+                      -when 'slideshows'
+                        -module_display = 'Slideshows'
+                      -when 'tags'
+                        -module_display = 'Tags'
+                      -when 'disabled_dates'
+                        -module_display = 'Disabled Dates'
+                      -when 'general_config'
+                        -module_display = 'General Config'
+                      -when 'seo_texts'
+                        -module_display = 'SEO Texts'
                       -else
-                        module_name.to_s.humanize
+                        -module_display = module_name.to_s.capitalize.gsub('_', ' ')
                       
                       -is_checked = @current_permissions.include?(module_name)
                       %label.checkbox
@@ -94,7 +122,7 @@
                     -rescue => e
                       %label.checkbox
                         %input{:type => "checkbox", :name => "permissions[]", :value => module_name}
-                        = module_name
+                        = module_name.to_s.capitalize.gsub('_', ' ')
               
               .form-actions
                 %button.btn.btn-primary{:type => "submit"} Update Permissions
