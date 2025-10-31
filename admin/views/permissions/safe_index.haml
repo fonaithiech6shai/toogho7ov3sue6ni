@@ -1,0 +1,30 @@
+-content_for :include do
+  =stylesheet_link_tag 'bootstrap-responsive.min.css'
+  =javascript_include_tag 'bootstrap.min.js'
+
+.tabs-content
+  .tab-content.active
+    %h1 Управление правами администраторов
+    
+    .alert.alert-error
+      %strong Ошибка кодировки!
+      %br
+      =@encoding_error_message if @encoding_error_message
+      %br
+      На странице обнаружены данные в некорректной кодировке.
+      %br
+      Пожалуйста, обратитесь к разработчику для исправления проблемы.
+    
+    .alert.alert-info
+      %strong Что можно сделать:
+      %ul
+        %li Проверить кодировку базы данных (UTF-8)
+        %li Проверить кодировку строковых полей в таблице accounts
+        %li Обновить проблемные записи в базе данных
+    
+    .row
+      .span12
+        %p
+          %a.btn.btn-primary{:href => url(:accounts, :index)} Перейти к управлению аккаунтами
+          &nbsp;
+          %a.btn.btn-secondary{:href => url(:base, :index)} На главную страницу админки

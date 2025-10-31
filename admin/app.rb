@@ -4,6 +4,23 @@ module Rozario
     puts 'WTF?'
     use ActiveRecord::ConnectionAdapters::ConnectionManagement
     
+    # Глобальная обработка ошибок кодировки
+    error Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError do
+      logger.error "Encoding error: #{env['REQUEST_PATH']} - #{request.env['REQUEST_METHOD']}" if defined?(logger)
+      
+      # Перенаправляем на безопасную версию страницы
+      if request.path_info.include?('permissions')
+        @encoding_error_message = "Ошибка кодировки в данных. Некоторые поля могут отображаться некорректно."
+        @accounts = []
+        @modules = Account::AVAILABLE_MODULES rescue []
+        @title = "Управление правами (ошибка кодировки)"
+        render 'permissions/safe_index'
+      else
+        # Для других страниц - показываем общую ошибку
+        erb '<h1>Ошибка кодировки</h1><p>Возникла проблема с кодировкой данных. Обратитесь к администратору.</p>'
+      end
+    end
+    
     # Хелпер для форматирования даты в русском формате
     def format_russian_date(date_string)
       return nil if date_string.nil? || date_string == ''

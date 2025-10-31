@@ -7,6 +7,13 @@
   .tab-content.active
     %h1 Управление правами администраторов
     
+    -if @encoding_error
+      .alert.alert-warning
+        %strong Ошибка кодировки: 
+        =@encoding_error
+        %br
+        Некоторые данные могут отображаться некорректно.
+    
     %p.description На этой странице вы можете управлять доступом пользователей к различным разделам админ-панели.
     
     .form-actions
@@ -46,11 +53,22 @@
                 %td
                   =check_box_tag "account_select", account.id, false, :class => "account-checkbox"
                 %td=account.id
-                %td=safe_display_account_field(account.display_name)
-                %td=safe_display_account_field(account.email)
                 %td
-                  %span.label{:class => role_class(account.role)}
-                    =account.role
+                  -begin
+                    =safe_display_account_field(account.display_name)
+                  -rescue => e
+                    [Ошибка кодировки]
+                %td
+                  -begin
+                    =safe_display_account_field(account.email)
+                  -rescue => e
+                    error@example.com
+                %td
+                  -begin
+                    %span.label{:class => role_class(account.role)}
+                      =safe_display_account_field(account.role || 'editor')
+                  -rescue => e
+                    %span.label.label-default editor
                 %td
                   -if account.role == 'admin'
                     %span.label.label-success Все (без ограничений)
