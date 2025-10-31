@@ -10,7 +10,7 @@ Rozario::Admin.controllers :permissions do
     
     # Принудительно используем только безопасную загрузку через SQL
     begin
-      @accounts = load_accounts_via_sql_safe
+      @accounts = load_accounts_via_sql
       @modules = Account::AVAILABLE_MODULES
       
       # Проверяем, можем ли мы рендерить шаблон
@@ -87,7 +87,7 @@ Rozario::Admin.controllers :permissions do
   end
   
   # Максимально безопасная загрузка аккаунтов
-  def load_accounts_via_sql_safe
+  def load_accounts_via_sql
     begin
       connection = ActiveRecord::Base.connection
       
