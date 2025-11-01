@@ -400,10 +400,11 @@ end
       filename = File.basename(current_path)
       
       # Проверяем существование файла в указанных директориях
+      # Порядок важен: smile до smiles для правильного определения пути
       image_paths = [
         "/srv/grunt/dest/uploads/smile/#{filename}",
-        "/srv/grunt/dest/uploads/smiles/#{filename}",
         "/srv/public/uploads/smile/#{filename}",
+        "/srv/grunt/dest/uploads/smiles/#{filename}",
         "/srv/public/uploads/smiles/#{filename}"
       ]
       
@@ -416,8 +417,11 @@ end
         if existing_path.include?('/uploads/smile/')
           # Файл в директории smile (единственное число)
           web_path = "/uploads/smile/#{filename}"
-        else
+        elsif existing_path.include?('/uploads/smiles/')
           # Файл в директории smiles (множественное число)
+          web_path = "/uploads/smiles/#{filename}"
+        else
+          # Fallback - если путь не содержит ожидаемых паттернов
           web_path = "/uploads/smiles/#{filename}"
         end
         return web_path
