@@ -391,16 +391,33 @@ end
     processed[:alt] || smile.alt
   end
   
-  # Безопасное получение изображения smile с проверкой на nil
+  # Безопасное получение изображения smile с проверкой на nil и существование файла
   def get_smile_image_path(smile)
     return nil unless smile && smile.images.present? && smile.images.current_path.present?
     
     begin
       current_path = smile.images.current_path
+      filename = File.basename(current_path)
       
-      # После обновления UploaderSmile все изображения уже обработаны и готовы к использованию
-      # Возвращаем путь к основному файлу (который уже является обработанным)
-      '/uploads/smiles/' + File.basename(current_path)
+      # Проверяем существование файла в указанных директориях
+      image_paths = [
+        "/srv/grunt/dest/uploads/smile/#{filename}",
+        "/srv/grunt/dest/uploads/smiles/#{filename}",
+        "/srv/public/uploads/smile/#{filename}",
+        "/srv/public/uploads/smiles/#{filename}"
+      ]
+      
+      # Находим первый существующий файл
+      existing_path = image_paths.find { |path| File.exist?(path) }
+      
+      if existing_path
+        # Возвращаем относительный web-путь к файлу
+        web_path = existing_path.gsub(/^\/srv\/(grunt\/dest|public)/, '')
+        return web_path
+      else
+        # Файл не найден ни в одной директории
+        return nil
+      end
     rescue => e
       # Логируем ошибку и возвращаем nil
       Rails.logger.error "Error processing smile image for smile #{smile.id}: #{e.message}" if defined?(Rails)
@@ -408,9 +425,9 @@ end
     end
   end
   
-  # Проверяет, есть ли у smile изображение
+  # Проверяет, есть ли у smile доступное изображение
   def smile_has_image?(smile)
-    smile && smile.images.present? && smile.images.current_path.present?
+    !get_smile_image_path(smile).nil?
   end
   
   # Generate dynamic schema.org Review microdata for smiles with SEO fallback

@@ -247,7 +247,15 @@ end %>
                    end
       %>
       <%= smile_image_schema(@post, alt_text) %>
-      <img class="animated" alt="<%=alt_text%>" src="<%='/uploads/smiles/'+@post.images_identifier%>" onclick="//location.href = '/smiles/<%=@p_prev%>/'" />
+      <% image_path = get_smile_image_path(@post) %>
+      <% if image_path %>
+        <img class="animated" alt="<%=alt_text%>" src="<%=image_path%>" onclick="//location.href = '/smiles/<%=@p_prev%>/'" />
+      <% else %>
+        <div class="smile-no-image-large">
+          <span class="no-image-text-large">📝 Отзыв</span>
+          <p>Изображение недоступно</p>
+        </div>
+      <% end %>
       <div id="qar_l"><img class="transition" id="ar_l" src="/images/arrow/ar_l.png" /></div>
       <div id="qar_r"><img class="transition" id="ar_r" src="/images/arrow/ar_r.png" /></div>
       <% if @post.date && !@post.date.strip.empty? %>
