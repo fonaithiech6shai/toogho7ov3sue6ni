@@ -9,18 +9,18 @@ Rozario::Admin.controllers :smiles do
     @filter_type = 'all'
     #@slideshows = Slideshow.all
     if filter == "sidebar"
-      @smile = Smile.where(sidebar: true).order('updated_at DESC, id DESC').paginate(:page => params[:page], :per_page => 20)
+      @smile = Smile.where(sidebar: true).order('updated_at DESC, created_at DESC, id DESC').paginate(:page => params[:page], :per_page => 20)
       render 'smiles/index'
     end
 
-    @smile = Smile.order('updated_at DESC, id DESC').paginate(:page => params[:page], :per_page => 20)
+    @smile = Smile.order('updated_at DESC, created_at DESC, id DESC').paginate(:page => params[:page], :per_page => 20)
     render 'smiles/index'
   end
   
   # Новая вкладка для неопубликованных смайлов
   get :unpublished do
     @title = "Unpublished Smiles"
-    @smile = Smile.where(published: 0).order('updated_at DESC, id DESC').paginate(:page => params[:page], :per_page => 20)
+    @smile = Smile.where(published: 0).order('updated_at DESC, created_at DESC, id DESC').paginate(:page => params[:page], :per_page => 20)
     @filter_type = 'unpublished'
     render 'smiles/index'
   end
@@ -371,7 +371,7 @@ Rozario::Admin.controllers :smiles do
     query = strip_tags(params[:query]).mb_chars.downcase
 
     if params[:query].length > 0
-      @smile = Smile.where("#{type} like ?", "%#{query}%").order('updated_at DESC, id DESC').paginate(:page => params[:page], :per_page => 20)
+      @smile = Smile.where("#{type} like ?", "%#{query}%").order('updated_at DESC, created_at DESC, id DESC').paginate(:page => params[:page], :per_page => 20)
       if @smile.first.nil?
         flash[:error] = "Ничего не найдено :("
         redirect back
@@ -380,7 +380,7 @@ Rozario::Admin.controllers :smiles do
         render 'smiles/index'
       end
     else
-      @smile = Smile.order('updated_at DESC, id DESC').paginate(:page => params[:page], :per_page => 20)
+      @smile = Smile.order('updated_at DESC, created_at DESC, id DESC').paginate(:page => params[:page], :per_page => 20)
       flash[:error] = "Введите запрос"
       render 'smiles/index'
     end

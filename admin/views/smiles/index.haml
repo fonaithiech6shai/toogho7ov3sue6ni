@@ -38,7 +38,7 @@
         %th.header= :title
         %th.header Фото
         %th.header Описание
-        %th.header Дата
+        %th.header Обновлено
         %th.header Рейтинг
         %th.header Sidebar
         %th.header.list-row-action-header
@@ -78,9 +78,9 @@
               = body_text
           %td.list-column
             - if show_as_bold
-              %strong= smile.date
+              %strong= smile.updated_at.strftime('%d.%m.%Y %H:%M') if smile.updated_at
             - else
-              = smile.date
+              = smile.updated_at.strftime('%d.%m.%Y %H:%M') if smile.updated_at
           %td.list-column
             - if show_as_bold
               %strong= smile.rating
