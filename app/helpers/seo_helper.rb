@@ -400,10 +400,7 @@ end
       filename = File.basename(current_path)
       
       # Проверяем существование файла в указанных директориях
-      # Порядок важен: smile до smiles для правильного определения пути
       image_paths = [
-        "/srv/grunt/dest/uploads/smile/#{filename}",
-        "/srv/public/uploads/smile/#{filename}",
         "/srv/grunt/dest/uploads/smiles/#{filename}",
         "/srv/public/uploads/smiles/#{filename}"
       ]
@@ -412,18 +409,8 @@ end
       existing_path = image_paths.find { |path| File.exist?(path) }
       
       if existing_path
-        # Возвращаем относительный web-путь к файлу
-        # Определяем, в какой директории найден файл
-        if existing_path.include?('/uploads/smile/')
-          # Файл в директории smile (единственное число)
-          web_path = "/uploads/smile/#{filename}"
-        elsif existing_path.include?('/uploads/smiles/')
-          # Файл в директории smiles (множественное число)
-          web_path = "/uploads/smiles/#{filename}"
-        else
-          # Fallback - если путь не содержит ожидаемых паттернов
-          web_path = "/uploads/smiles/#{filename}"
-        end
+        # Возвращаем web-путь к файлу (только smiles директории)
+        web_path = "/uploads/smiles/#{filename}"
         return web_path
       else
         # Файл не найден ни в одной директории
