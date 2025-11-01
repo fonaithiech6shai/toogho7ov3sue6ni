@@ -73,7 +73,10 @@ Rozario::App.helpers do
     return "" unless smile && smile.respond_to?(:images_identifier) && present?(smile.images_identifier)
     
     begin
-      image_path = "/uploads/smiles/#{smile.images_identifier}"
+      # Используем get_smile_image_path для проверки существования и правильного пути
+      image_path = get_smile_image_path(smile)
+      return "" if blank?(image_path)
+      
       image_url = full_image_url(image_path)
       return "" if blank?(image_url)
       

@@ -1,10 +1,12 @@
 <% i = 0 + @offset; @posts.each do | post | %>
+  <% image_path = get_smile_image_path(post) %>
+  <% next unless image_path %> <!-- Пропускаем смайлы без изображений -->
   <% if i % 5 == 0; big = 'big'; else; big = ''; end; %>
   <div class="post-item <%=big%>"><div class="wrapper hvr-grow">
     <%#<h2></h2>%>
     <hr />
     <p>
-      <img class="show-smile" type="button" data-toggle="modal" data-target="#myModalBox" data-id="<%=post.id%>" data-num="<%=i%>" src="<%='/uploads/smiles/'+post.images%>" />
+      <img class="show-smile" type="button" data-toggle="modal" data-target="#myModalBox" data-id="<%=post.id%>" data-num="<%=i%>" src="<%=image_path%>" />
     </p>
     <p>
       <%#= if (post.content.length < 128); post.content; else; post.content[0..128]+' [...]'; end; %>

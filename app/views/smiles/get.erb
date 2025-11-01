@@ -1,19 +1,12 @@
 <% i = 0 + @offset; @posts.each do | post | %>
+  <% image_path = get_smile_image_path(post) %>
+  <% next unless image_path %> <!-- Пропускаем смайлы без изображений -->
   <% if i % 5 == 0; big = 'big'; else; big = ''; end; %>
   <div class="post-item <%=big%>"><div class="wrapper hvr-grow">
     <%#<h2></h2>%>
     <hr />
     <p>
-      <% image_path = get_smile_image_path(post) %>
-      <% if image_path %>
-        <a href="/smiles/<%=post.id%>/"><img class="show-smile" type="button" src="<%=image_path%>" /></a>
-      <% else %>
-        <!-- Отзыв без изображения -->
-        <a href="/smiles/<%=post.id%>/" class="no-image-smile">
-          <div class="smile-no-image">
-            <span class="no-image-text">📝 Отзыв</span>
-          </div>
-        </a>
+      <a href="/smiles/<%=post.id%>/"><img class="show-smile" type="button" src="<%=image_path%>" /></a>
       <% end %>
     </p>
     <p >

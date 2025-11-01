@@ -26,6 +26,8 @@
 
 <div class="post-list" style="visibility:hidden;"><div class="wrapper">
   <% i = 0; @postsss.each do | post | %>
+    <% image_path = get_smile_image_path(post) %>
+    <% next unless image_path %> <!-- Пропускаем смайлы без изображений -->
     <% if i % 5 == 0; big = 'big'; else; big = ''; end; %>
     <%
       if @pid
@@ -43,19 +45,9 @@
         <meta itemprop="name" content='<%=post.title%>'>
         <meta itemprop="description" content='<%=post.title%>'>
         <meta itemprop="author" content='Rozarioflowers'>
-        <% image_path = get_smile_image_path(post) %>
-        <% if image_path %>
-          <a href="<%=linkkk%>" itemprop='contentUrl'><img class="show-smile" alt="<%=process_smile_alt(post)%>" type="button" src="<%=image_path%>" /></a>
-          <meta itemprop="width" content='256'>
-          <meta itemprop="height" content='256'>
-        <% else %>
-          <!-- Отзыв без изображения -->
-          <a href="<%=linkkk%>" class="no-image-smile">
-            <div class="smile-no-image">
-              <span class="no-image-text">📝 Отзыв</span>
-            </div>
-          </a>
-        <% end %>
+        <a href="<%=linkkk%>" itemprop='contentUrl'><img class="show-smile" alt="<%=process_smile_alt(post)%>" type="button" src="<%=image_path%>" /></a>
+        <meta itemprop="width" content='256'>
+        <meta itemprop="height" content='256'>
       </p>
       <p >
         <a class="btn rm" href="<%=linkkk%>">Подробнее</a>
