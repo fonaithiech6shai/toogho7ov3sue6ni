@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 
 # Конфигурация
 TEST_DIR="$(dirname "$0")"
-UNIT_TEST="$TEST_DIR/unit/test_1c_exchange_unit.rb"
+UNIT_TEST="$TEST_DIR/unit/test_1c_exchange_logic.rb"
 MOCK_TEST="$TEST_DIR/utils/test_1c_exchange_mock.rb"
 INTEGRATION_TEST="$TEST_DIR/integration/test_1c_exchange_api.rb"
 
