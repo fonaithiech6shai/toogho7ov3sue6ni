@@ -24,7 +24,12 @@
             .span3
               .module-card
                 %h4=humanize_module_name(mod)
-                %p.module-code=mod
+                .module-icon
+                  - icon_path = "app/views/icons/#{mod}.svg"
+                  - if File.exist?(icon_path)
+                    = File.read(icon_path).html_safe
+                  - else
+                    %p.module-code=mod
                 =link_to "Перейти", "/admin/#{mod}", :class => "btn btn-primary btn-small"
       -else
         .alert.alert-warning У вас нет доступа ни к одному разделу. Обратитесь к администратору.
@@ -75,11 +80,22 @@
     margin: 0 0 10px 0;
     color: #333;
   }
+  .available-modules .row {
+    margin-bottom: 10px;
+  }
+  .module-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 10px 0;
+  }
+  .module-icon svg {
+    width: 48px;
+    height: 48px;
+    fill: #000000;
+  }
   .module-code {
     color: #999;
     font-size: 12px;
     margin: 5px 0;
-  }
-  .available-modules .row {
-    margin-bottom: 10px;
   }
