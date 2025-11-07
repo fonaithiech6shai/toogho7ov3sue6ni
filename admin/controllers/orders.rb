@@ -1,4 +1,6 @@
 # encoding: utf-8
+require_relative '../../app/models/order_product'
+
 Rozario::Admin.controllers :orders do
 
   get :index do

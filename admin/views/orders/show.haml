@@ -35,9 +35,10 @@
           %td.list-column= '%.0f' % (item["price"].to_f * item["quantity"].to_i)
     - else
       - order_products_found = false
-      - if @order && @order.respond_to?(:order_products)
+      - if @order && @order.id
         - begin
-          - order_products = @order.order_products
+          # Используем find_by_sql как в остальных частях проекта
+          - order_products = Order_product.find_by_sql("SELECT * FROM order_products WHERE order_id = #{@order.id}")
           - if order_products && order_products.any?
             - order_products_found = true
             - order_products.each do |order_product|
