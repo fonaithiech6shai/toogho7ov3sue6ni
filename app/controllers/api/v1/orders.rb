@@ -4,11 +4,21 @@ Rozario::App.controllers :orders, map: 'api/v1/orders' do
 		i = 0
 		str = ''
 		# @sum = Order_product.where('id' + @last_id.to_s + '')
-		@sum = Order_product.where('order_id = ' + key.to_s + '').to_json
+		# Безопасная загрузка данных с проверкой на ошибки
+		begin
+			@sum = Order_product.where('order_id = ?', key.to_s).to_json
+		rescue => e
+			puts "Error in parse_price method: #{e.message}"
+			return '' # Возвращаем пустую строку при ошибке
+		end
 		parse_title = @sum.scan(/title+\W+"([А-Яа-яЁё\s\d().]+)/).to_a
 		parse_price =  @sum.scan(/[^_]price+\W+([\d]+)/).to_a
 		parse_quantity = @sum.scan(/quantity+\W+([\d]+)/).to_a
-		deliveries_price = Order.last.del_price
+		deliveries_price = begin
+			Order.find(key).del_price || 0
+		rescue
+			0
+		end
 		parse_array = parse_title.zip(parse_price, parse_quantity)
 		length_array = parse_array.length
 		lmi_del_name = "&LMI_SHOPPINGCART.ITEMS[#{length_array}].NAME=Доставка"
@@ -31,6 +41,11 @@ Rozario::App.controllers :orders, map: 'api/v1/orders' do
 			break if i == length_array
 		end
 		str.concat(lmi_del_name).concat(lmi_del_quantity).concat(lmi_del_price).concat(lmi_del_tax)
+	rescue => e
+		# Общая обработка ошибок метода parse_price
+		puts "Fatal error in parse_price method: #{e.message}"
+		puts e.backtrace.join("\n") if e.backtrace
+		return '' # Возвращаем пустую строку при ошибке
 	end
 
   get :test do
@@ -236,6 +251,8 @@ Rozario::App.controllers :orders, map: 'api/v1/orders' do
       end
 
       thread = Thread.new do
+        begin
+          puts "[EMAIL] Начинаем отправку писем для заказа #{@order_id}"
         # рендерим pdf с инвойсом из html
         order_html = render 'cart/mailorder'
         order_obj = PDFKit.new(order_html, :page_size => 'Letter', :margin_top => '0', :margin_right => '0', :margin_bottom => '0', :margin_left => '0')
@@ -263,6 +280,9 @@ Rozario::App.controllers :orders, map: 'api/v1/orders' do
 
         subj = "Заказ № #{@order_id} на сайте #{@subdomain.url}.rozarioflowers.ru" + ' | ' + d_mess
         if @dname == ENV['TESTER_EMAIL'].to_s || @dname == 'test'.downcase; subj = "ТЕСТОВЫЙ заказ № #{@order_id} на сайте " + @subdomain.url + ".rozarioflowers.ru" + ' | ' + d_mess; end;
+        
+        puts "[EMAIL] Отправляем письмо администратору: #{email_for_orders}"
+        puts "[EMAIL] Тема: #{subj}"
         email do
           from "Rozario robot <no-reply@rozarioflowers.ru>"
           to email_for_orders
@@ -281,12 +301,21 @@ Rozario::App.controllers :orders, map: 'api/v1/orders' do
         # отправляем письмецо юзеру
         ubody = render 'cart/mailorder2user'
         subj = "Ваш заказ № #{@order_id} на сайте rozarioflowers.ru"
+        
+        puts "[EMAIL] Отправляем письмо клиенту: #{email}"
+        puts "[EMAIL] Тема: #{subj}"
         email do
           content_type :html
           from "Rozario <no-reply@rozarioflowers.ru>"
           to email
           subject subj
           body ubody
+        end
+        
+        puts "[EMAIL] Отправка писем завершена для заказа #{@order_id}"
+        rescue => e
+          puts "[EMAIL ERROR] Ошибка при отправке писем: #{e.message}"
+          puts e.backtrace.join("\n") if e.backtrace
         end
       end
 
