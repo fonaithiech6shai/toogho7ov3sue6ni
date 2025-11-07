@@ -21,6 +21,10 @@ class TestRunner
     puts "\n🔗 Интеграционные тесты:"
     run_tests_in_directory('tests/integration')
     
+    # Запуск утилит для анализа
+    puts "\n🔧 Утилиты анализа:"
+    run_analysis_tools
+    
     puts "\n✅ Все тесты завершены!"
   end
   
@@ -32,6 +36,16 @@ class TestRunner
   def self.run_integration_only
     puts "🔗 Запуск только интеграционных тестов"
     run_tests_in_directory('tests/integration')
+  end
+  
+  def self.run_order_products_only
+    puts "🛍️ Запуск только тестов order_products"
+    puts "  → Unit: order_products_structure_test.rb"
+    system("ruby unit/order_products_structure_test.rb")
+    puts "  → Integration: test_order_products_flow.rb"
+    system("ruby integration/test_order_products_flow.rb")
+    puts "  → Performance: order_products_performance_analysis.rb"
+    system("ruby utils/order_products_performance_analysis.rb")
   end
   
   private
@@ -50,6 +64,19 @@ class TestRunner
       end
     end
   end
+  
+  def self.run_analysis_tools
+    analysis_files = [
+      'tests/utils/order_products_performance_analysis.rb'
+    ]
+    
+    analysis_files.each do |tool_file|
+      if File.exist?(tool_file)
+        puts "  → #{File.basename(tool_file)}"
+        system("ruby #{tool_file}")
+      end
+    end
+  end
 end
 
 # Запуск в зависимости от аргументов
@@ -61,8 +88,13 @@ else
     TestRunner.run_unit_only
   when 'integration'
     TestRunner.run_integration_only
+  when 'order_products'
+    TestRunner.run_order_products_only
   else
-    puts "Использование: ruby test_runner.rb [unit|integration]"
+    puts "Использование: ruby test_runner.rb [unit|integration|order_products]"
+    puts "  unit         - только unit тесты"
+    puts "  integration  - только интеграционные тесты"
+    puts "  order_products - тесты структуры order_products"
     exit 1
   end
 end

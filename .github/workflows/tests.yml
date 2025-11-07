@@ -284,6 +284,14 @@ jobs:
         ruby test_smile_logic.rb
         ruby spec/admin_date_helpers_spec.rb
         
+    - name: 🛍️ Тесты order_products структуры
+      run: |
+        echo "🛍️ Тестируем структурные изменения order_products (id->order_id)..."
+        cd tests
+        ruby unit/order_products_structure_test.rb
+        ruby integration/test_order_products_flow.rb
+        ruby utils/order_products_performance_analysis.rb
+        
     - name: 📈 Отчёт о тестах
       if: always()
       run: |
@@ -297,7 +305,8 @@ jobs:
         echo "  - Smile Aggregated Schema: 10 тестов, 55 assertions (НОВЫЕ)"
         echo "  - Smile Admin Functionality: 15 тестов, 80 assertions (НОВЫЕ)"
         echo "  - CI Improvements: 11 тестов, 45 assertions (НОВЫЕ)"
-        echo "  - Итого: 91 тест, 513+ assertions"
+        echo "  - Order Products Structure: 9 тестов, 27+ assertions (НОВЫЕ)"
+        echo "  - Итого: 100+ тестов, 540+ assertions"
         
     - name: 📤 Загрузка отчётов тестов
       uses: actions/upload-artifact@v4
@@ -531,7 +540,7 @@ jobs:
         fi
         
         if [[ "${{ needs.unit-tests.result }}" == "success" ]]; then
-          echo "- 🧪 Unit тесты (91 тест: Schema + FAQ + Smile Products + Multiple Comments + Aggregated Schema + Admin + CI)"
+          echo "- 🧪 Unit тесты (100+ тестов: Schema + FAQ + Smile Products + Multiple Comments + Aggregated Schema + Admin + CI + Order Products Structure)"
         fi
         
         if [[ "${{ needs.performance-check.result }}" == "success" ]]; then
