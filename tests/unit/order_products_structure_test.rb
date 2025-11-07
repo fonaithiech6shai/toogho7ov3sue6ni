@@ -2,6 +2,7 @@
 require_relative '../test_setup'
 require 'minitest/autorun'
 require 'json'
+require 'ostruct'
 
 # Unit test for order_products structure changes validation
 # Tests the core logic changes: id->order_id migration
