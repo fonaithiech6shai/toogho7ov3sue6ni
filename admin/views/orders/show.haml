@@ -5,10 +5,10 @@
   =@order.created_at.in_time_zone.strftime("%d.%m.%Y, %H:%M")
 %h5
   Пользователь:
-  = if @order.useraccount && @order.useraccount.respond_to?(:surname)
-    @order.useraccount.surname || "Пользователь"
+  - if @order.useraccount && @order.useraccount.respond_to?(:surname)
+    = @order.useraccount.surname || "Пользователь"
   - else
-    "Гость"
+    = "Гость"
 
 %table#list.table.table-striped.table-hover.table-condensed
   %thead
