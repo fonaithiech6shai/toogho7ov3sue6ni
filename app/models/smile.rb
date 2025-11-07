@@ -140,7 +140,7 @@ class Smile < ActiveRecord::Base
     return nil unless order_products_base_id.present?
     
     begin
-      Order_product.find_by_base_id(order_products_base_id)
+      Order_product.find(order_products_base_id)
     rescue => e
       Rails.logger.error "Error fetching order_product for smile #{id}: #{e.message}" if defined?(Rails)
       nil
@@ -163,8 +163,8 @@ class Smile < ActiveRecord::Base
       order = Order.find_by_eight_digit_id(order_eight_digit_id)
       return nil unless order
       
-      # Получаем товары из заказа (в таблице order_products поле id является FK на orders.id)
-      cart_items = Order_product.find_by_sql("SELECT * FROM order_products WHERE id = #{order.id}")
+      # Получаем товары из заказа (в таблице order_products поле order_id является FK на orders.id)
+      cart_items = Order_product.find_by_sql("SELECT * FROM order_products WHERE order_id = #{order.id}")
       return nil if cart_items.empty?
       
       # Преобразуем в формат, совместимый с json_order
@@ -302,7 +302,7 @@ class Smile < ActiveRecord::Base
     return nil unless order_products_base_id.present?
     
     begin
-      Order_product.find_by_base_id(order_products_base_id) if defined?(Order_product)
+      Order_product.find(order_products_base_id) if defined?(Order_product)
     rescue => e
       Rails.logger.error "Error fetching order_product for smile #{id}: #{e.message}" if defined?(Rails)
       nil

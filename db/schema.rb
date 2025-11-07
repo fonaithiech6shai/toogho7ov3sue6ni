@@ -221,8 +221,8 @@ ActiveRecord::Schema.define(:version => 88) do
     t.datetime "updated_at", :null => false
   end
 
-  create_table "order_products", :id => false, :force => true do |t|
-    t.integer  "id"
+  create_table "order_products", :force => true do |t|
+    t.integer  "order_id"
     t.integer  "product_id"
     t.string   "title"
     t.integer  "price"
@@ -232,7 +232,7 @@ ActiveRecord::Schema.define(:version => 88) do
     t.datetime "date_to"
   end
 
-  add_index "order_products", ["id"], :name => "id"
+  add_index "order_products", ["order_id"], :name => "order_id"
 
   create_table "orders", :force => true do |t|
     t.integer  "eight_digit_id"

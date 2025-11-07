@@ -295,8 +295,8 @@ Rozario::Admin.controllers :smiles do
         return { error: "Заказ с номером #{order_eight_digit_id} не найден" }.to_json
       end
       
-      # Получаем товары из заказа (в таблице order_products поле id является FK на orders.id)
-      cart_items = Order_product.find_by_sql("SELECT * FROM order_products WHERE id = #{order.id}")
+      # Получаем товары из заказа (в таблице order_products поле order_id является FK на orders.id)
+      cart_items = Order_product.find_by_sql("SELECT * FROM order_products WHERE order_id = #{order.id}")
       
       if cart_items.empty?
         return { error: "В заказе #{order_eight_digit_id} нет товаров" }.to_json
@@ -309,7 +309,7 @@ Rozario::Admin.controllers :smiles do
           complect = Complect.find_by_title(item.typing) if item.typing
           
           {
-            base_id: item.base_id,  # Добавляем base_id из order_products
+            base_id: item.id,  # Добавляем id из order_products (теперь это первичный ключ)
             id: item.product_id,
             title: item.title || (product ? product.header : "Товар не найден"),
             price: item.price,

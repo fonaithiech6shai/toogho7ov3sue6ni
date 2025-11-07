@@ -120,7 +120,7 @@ class TestSmile
       return nil unless order
       
       # Получаем товары из заказа - тестируем правильную структуру БД
-      cart_items = MockOrderProduct.find_by_sql("SELECT * FROM order_products WHERE id = #{order.id}")
+      cart_items = MockOrderProduct.find_by_sql("SELECT * FROM order_products WHERE order_id = #{order.id}")
       return nil if cart_items.empty?
       
       # Преобразуем в формат, совместимый с json_order

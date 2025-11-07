@@ -63,15 +63,15 @@ class SmileAdminFunctionalityTest < Minitest::Test
   end
   
   def test_sql_query_fix_order_products
-    # Test that SQL query uses correct field name (id instead of order_id)
+    # Test that SQL query uses correct field name (order_id instead of id)
     order_id = 100
     
-    # Correct SQL should use 'WHERE id = X' not 'WHERE order_id = X'
-    correct_sql = "SELECT * FROM order_products WHERE id = #{order_id}"
-    incorrect_sql = "SELECT * FROM order_products WHERE order_id = #{order_id}"
+    # Correct SQL should use 'WHERE order_id = X' not 'WHERE id = X'
+    correct_sql = "SELECT * FROM order_products WHERE order_id = #{order_id}"
+    incorrect_sql = "SELECT * FROM order_products WHERE id = #{order_id}"
     
-    assert correct_sql.include?("WHERE id ="), "SQL should use 'id' field as FK to orders.id"
-    refute incorrect_sql == correct_sql, "Should not use incorrect 'order_id' field name"
+    assert correct_sql.include?("WHERE order_id ="), "SQL should use 'order_id' field as FK to orders.id"
+    refute incorrect_sql == correct_sql, "Should not use incorrect 'id' field name"
   end
   
   def test_order_products_api_response_structure

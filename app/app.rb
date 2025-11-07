@@ -301,7 +301,7 @@ module Rozario
     # get '/tester' do
     #   content_type :text
     #   result = []
-    #   cart = Order_product.find_by_sql("SELECT * FROM order_products WHERE id = 79678")
+    #   cart = Order_product.find_by_sql("SELECT * FROM order_products WHERE order_id = 79678")
     #   cart.each { |order_product|
     #     complect_id = Complect.where(header: order_product.typing).first.id
     #     product_complect = ProductComplect.where(product_id: order_product.product_id, complect_id: complect_id).first

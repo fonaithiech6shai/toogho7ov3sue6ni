@@ -21,7 +21,7 @@ Rozario::App.controllers :work do
     end
     # order_products = Order_product.where.not(id: Order.pluck(:id))  # does not work
     # order_products = Order_product.where.not(id: Order.select(:id)) # does not work
-    order_products = Order_product.where("NOT EXISTS (SELECT 1 FROM orders WHERE orders.id = order_products.id)") # Находим все записи продуктов не связанные с заказами (таблица предназначена для копий записей продуктов с вычисленной ценой под определённый заказ)
+    order_products = Order_product.where("NOT EXISTS (SELECT 1 FROM orders WHERE orders.id = order_products.order_id)") # Находим все записи продуктов не связанные с заказами (таблица предназначена для копий записей продуктов с вычисленной ценой под определённый заказ)
     transaction_conditons[3] = order_products.delete_all
     return transaction_conditons.to_json
   end

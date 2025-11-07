@@ -27,8 +27,8 @@ class SmileProductsDataTest < Minitest::Test
     
     @mock_order_product_class = Class.new do
       def self.find_by_sql(query)
-        # Правильная структура БД: в order_products поле 'id' является FK на orders.id
-        if query.include?('WHERE id = 100')
+        # Правильная структура БД: в order_products поле 'order_id' является FK на orders.id
+        if query.include?('WHERE order_id = 100')
           return [
             self.new(123, 'Букет "Романтика"', 1500, 1, 'standard'),
             self.new(456, 'Открытка поздравительная', 100, 1, 'card')
@@ -109,7 +109,7 @@ class SmileProductsDataTest < Minitest::Test
           return nil unless order
           
           # Получаем товары из заказа (поле 'id' является FK на orders.id)
-          cart_items = @mock_order_product.find_by_sql("SELECT * FROM order_products WHERE id = #{order.id}")
+          cart_items = @mock_order_product.find_by_sql("SELECT * FROM order_products WHERE order_id = #{order.id}")
           return nil if cart_items.empty?
           
           # Преобразуем в формат, совместимый с json_order

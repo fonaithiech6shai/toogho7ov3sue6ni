@@ -969,7 +969,7 @@ Rozario::App.controllers :api do
       when 'query'
         content_type 'text/xml'
         '<?xml version=\"2.0\" encoding=\"UTF-8\"?>'
-        ord = Order.find_by_sql("SELECT * FROM orders INNER JOIN order_products ON orders.id = order_products.id WHERE erp_status = 0")
+        ord = Order.find_by_sql("SELECT * FROM orders INNER JOIN order_products ON orders.id = order_products.order_id WHERE erp_status = 0")
         # puts ord.to_xml
         doc = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
         xml.КоммерческаяИнформация("xmlns"=> "urn:1C.ru:commerceml_2", "ВерсияСхемы"=> "2.03", "xmlns:xs"=>"http://www.w3.org/2001/XMLSchema", "xmlns:xsi" => "http://www.w3.org/2001/XMLSchema-instance") {
@@ -1127,7 +1127,7 @@ Rozario::App.controllers :api do
                   xml.Сумма x.del_price
                 }
               # end
-            Order_product.find_by_sql("SELECT *  FROM order_products WHERE id = " + x.id.to_s + "").each_with_index { |x|
+            Order_product.find_by_sql("SELECT *  FROM order_products WHERE order_id = " + x.id.to_s + "").each_with_index { |x|
               xml.Товар {
                 xml.Ид x.product_id
                 xml.Наименование x.title

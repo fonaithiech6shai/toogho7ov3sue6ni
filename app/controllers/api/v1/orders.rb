@@ -4,7 +4,7 @@ Rozario::App.controllers :orders, map: 'api/v1/orders' do
 		i = 0
 		str = ''
 		# @sum = Order_product.where('id' + @last_id.to_s + '')
-		@sum = Order_product.where('id = ' + key.to_s + '').to_json
+		@sum = Order_product.where('order_id = ' + key.to_s + '').to_json
 		parse_title = @sum.scan(/title+\W+"([А-Яа-яЁё\s\d().]+)/).to_a
 		parse_price =  @sum.scan(/[^_]price+\W+([\d]+)/).to_a
 		parse_quantity = @sum.scan(/quantity+\W+([\d]+)/).to_a
@@ -223,7 +223,7 @@ Rozario::App.controllers :orders, map: 'api/v1/orders' do
         product = Product.find_by_id(item['id'])
         type = item['type'].present? ? item['type'] : 'standard'
         ord = Order_product.new(
-          id: @last_id,
+          order_id: @last_id,
           product_id: p.id,
           title: product_item2title(item),
           price: item['clean_price'],
