@@ -31,9 +31,13 @@ Rozario::App.controllers :orders, map: 'api/v1/orders' do
     
     # Проверяем, что email_for_orders не пустой
     if email_for_orders.empty?
-      # Fallback на тот же адрес, который используется в тестах
-      puts "[EMAIL WARNING] ORDER_EMAIL и ADMIN_EMAIL не установлены, используем fallback"
-      email_for_orders = 'admin@rozarioflowers.ru'  # Стандартный адрес
+      # Fallback на ADMIN_EMAIL
+      puts "[EMAIL WARNING] ORDER_EMAIL не установлен, используем ADMIN_EMAIL"
+      email_for_orders = ENV['ADMIN_EMAIL'].to_s
+      if email_for_orders.empty?
+        puts "[EMAIL ERROR] ADMIN_EMAIL тоже не установлен, письма админу не будут отправлены"
+        email_for_orders = nil
+      end
     end
 
     params = JSON.parse(request.body.read)
@@ -246,23 +250,29 @@ Rozario::App.controllers :orders, map: 'api/v1/orders' do
         subj = "Заказ № #{@order_id} на сайте #{subdomain_url}.rozarioflowers.ru" + ' | ' + d_mess
         if @dname == ENV['TESTER_EMAIL'].to_s || @dname == 'test'.downcase; subj = "ТЕСТОВЫЙ заказ № #{@order_id} на сайте " + subdomain_url + ".rozarioflowers.ru" + ' | ' + d_mess; end;
         
-        puts "[EMAIL] Отправляем письмо администратору: #{email_for_orders}"
-        puts "[EMAIL] Тема: #{subj}"
         puts "[EMAIL DEBUG] ORDER_EMAIL: #{ENV['ORDER_EMAIL'] || 'NOT SET'}"
         puts "[EMAIL DEBUG] ADMIN_EMAIL: #{ENV['ADMIN_EMAIL'] || 'NOT SET'}"
-        email do
-          from "Rozario robot <no-reply@rozarioflowers.ru>"
-          to email_for_orders
-          subject subj
-          body "Заказ от " + Time.now.getlocal("+03:00").strftime("%d.%m.%Y %H:%M")
-          add_file :filename => 'order_' + Time.now.getlocal("+04:00").strftime("%d%m%Y-%H%M") + '.pdf', :content => order_pdf
-          add_file :filename => 'orderDostavka_' + Time.now.getlocal("+04:00").strftime("%d%m%Y-%H%M") + '.pdf', :content => order2_pdf
-          cart.each do |item|
-            product = Product.find(item["id"])
-            if product.image.to_s != ""
-              add_file :filename => product.header + '.jpg', :content => File.read(File.join(Padrino.root, "public", product.image.to_s))
+        
+        # Отправляем письмо админу только если есть адрес
+        if email_for_orders && !email_for_orders.empty?
+          puts "[EMAIL] Отправляем письмо администратору: #{email_for_orders}"
+          puts "[EMAIL] Тема: #{subj}"
+          email do
+            from "Rozario robot <no-reply@rozarioflowers.ru>"
+            to email_for_orders
+            subject subj
+            body "Заказ от " + Time.now.getlocal("+03:00").strftime("%d.%m.%Y %H:%M")
+            add_file :filename => 'order_' + Time.now.getlocal("+04:00").strftime("%d%m%Y-%H%M") + '.pdf', :content => order_pdf
+            add_file :filename => 'orderDostavka_' + Time.now.getlocal("+04:00").strftime("%d%m%Y-%H%M") + '.pdf', :content => order2_pdf
+            cart.each do |item|
+              product = Product.find(item["id"])
+              if product.image.to_s != ""
+                add_file :filename => product.header + '.jpg', :content => File.read(File.join(Padrino.root, "public", product.image.to_s))
+              end
             end
           end
+        else
+          puts "[EMAIL SKIP] Пропускаем отправку письма админу - нет адреса получателя"
         end
 
         # отправляем письмецо юзеру
