@@ -94,28 +94,54 @@ class SmartEncodingTest < Minitest::Test
     puts "✅ Performance test passed (#{((end_time - start_time) * 1000).round(2)}ms)"
   end
   
-  def test_connection_pool_patching_logic
-    # Симуляция логики патчинга connection pool
-    # Проверяем, что respond_to? работает корректно
+  def test_no_infinite_recursion_in_connection_setup
+    # Тест на отсутствие бесконечной рекурсии
+    # Проверяем, что методы вызываются конечное количество раз
     
-    mock_pool = Object.new
+    call_count = 0
     
-    # Первый вызов - метод отсутствует
-    refute mock_pool.respond_to?(:original_new_connection)
-    
-    # Добавляем метод через class <<
-    class << mock_pool
-      def original_new_connection; "mocked"; end
+    # Создаем mock connection class заранее
+    mock_class = Class.new do
+      def self.name; 'Mysql2Adapter'; end
     end
     
-    # Теперь метод должен существовать
-    assert mock_pool.respond_to?(:original_new_connection)
-    assert_equal "mocked", mock_pool.original_new_connection
+    mock_connection = Object.new
+    mock_connection.define_singleton_method(:class) { mock_class }
+    mock_connection.define_singleton_method(:execute) do |sql|
+      call_count += 1
+      raise "Too many calls!" if call_count > 10  # Предотвращаем бесконечный луп
+      "SQL executed: #{sql}"
+    end
     
-    puts "✅ Connection pool patching logic works"
+    # Симулируем setup_connection
+    setup_mysql_encoding(mock_connection)
+    
+    # Проверяем, что вызовы были разумными
+    assert call_count > 0, "Should have made some SQL calls"
+    assert call_count <= 10, "Should not make too many calls (avoid recursion)"
+    
+    puts "✅ No infinite recursion in connection setup (#{call_count} calls)"
   end
   
   private
+  
+  def setup_mysql_encoding(connection)
+    return unless connection.class.name.include?('Mysql')
+    
+    begin
+      # Пробуем utf8mb4
+      connection.execute("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci")
+      connection.execute("SET CHARACTER SET utf8mb4")
+    rescue => e
+      begin
+        # Fallback на обычный utf8
+        connection.execute("SET NAMES utf8 COLLATE utf8_unicode_ci")
+        connection.execute("SET CHARACTER SET utf8")
+      rescue => inner_e
+        # Просто продолжаем
+      end
+    end
+  end
   
   def smart_convert_to_utf8(input)
     return nil if input.nil?

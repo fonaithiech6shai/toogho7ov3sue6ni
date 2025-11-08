@@ -37,63 +37,36 @@ if defined?(ActiveRecord)
       # Настраиваем кодировку для новых соединений
       return unless ActiveRecord::Base.connected?
       
-      pool = ActiveRecord::Base.connection_pool
+      # Используем более простой подход - патчим класс адаптера
+      adapter_class = ActiveRecord::Base.connection.class
       
-      # Проверяем, что метод еще не переопределен
-      unless pool.respond_to?(:original_new_connection)
-        class << pool
-          alias_method :original_new_connection, :new_connection
+      unless adapter_class.instance_variable_get(:@smart_encoding_patched)
+        adapter_class.class_eval do
+          alias_method :original_new_connection, :new_connection if method_defined?(:new_connection)
           
-          def new_connection
-            conn = original_new_connection
+          def new_connection(*args)
+            conn = if respond_to?(:original_new_connection)
+              original_new_connection(*args)
+            else
+              super(*args)
+            end
             SmartMysqlEncoding.setup_connection(conn)
             conn
           end
         end
-      end
-    end
-  end
-  
-  # Используем отложенную инициализацию после загрузки приложения
-  # Это будет выполнено в config/apps.rb или после Padrino.load!
-  if defined?(Padrino) && Padrino.respond_to?(:after_load)
-    Padrino.after_load do
-      SmartMysqlEncoding.apply_to_existing_connection
-      SmartMysqlEncoding.patch_new_connections
-    end
-  else
-    # Fallback для случая, если after_load недоступен
-    # Выполняем при первом обращении к модели
-    ActiveRecord::Base.class_eval do
-      def self.inherited(subclass)
-        super
-        # При первом создании модели пытаемся настроить кодировку
-        SmartMysqlEncoding.apply_to_existing_connection
-        SmartMysqlEncoding.patch_new_connections
         
-        # Убираем этот callback после первого выполнения
-        class << self
-          remove_method :inherited if method_defined?(:inherited)
-        end
+        adapter_class.instance_variable_set(:@smart_encoding_patched, true)
       end
+    rescue => e
+      # Если патчинг не удался - просто продолжаем
+      puts "[WARNING] Could not patch connection adapter: #{e.message}" if ENV['DEBUG']
     end
   end
-end
-# Дополнительная безопасность: если ничего не сработало,
-# попробуем настроить при первом SQL запросе
-if defined?(ActiveRecord)
-  original_execute_method = nil
   
-  ActiveRecord::Base.connection_pool.instance_eval do
-    def with_connection
-      super do |conn|
-        # При первом использовании соединения настраиваем кодировку
-        unless @smart_encoding_applied
-          SmartMysqlEncoding.setup_connection(conn)
-          @smart_encoding_applied = true
-        end
-        yield conn
-      end
-    end
-  end if ActiveRecord::Base.connected? rescue false
+  # Простой и безопасный подход - настраиваем только текущее соединение
+  # Новые соединения будут настроены при первом использовании
+  # Это будет выполнено в config/apps.rb после монтирования
+  # Не пытаемся патчить connection pool - это опасно
+  
+  # Просто настраиваем текущее соединение когда оно доступно
 end

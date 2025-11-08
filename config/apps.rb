@@ -40,8 +40,8 @@ Padrino.mount("Rozario::Admin", :app_file => File.expand_path('../../admin/app.r
 # Инициализация smart encoding после монтирования приложений
 if defined?(SmartMysqlEncoding)
   begin
+    # Только настраиваем текущее соединение, без патчинга
     SmartMysqlEncoding.apply_to_existing_connection
-    SmartMysqlEncoding.patch_new_connections
     puts "[DEBUG] Smart MySQL encoding суспешно применен" if ENV['DEBUG']
   rescue => e
     puts "[WARNING] Smart MySQL encoding не может быть применен: #{e.message}" if ENV['DEBUG']
