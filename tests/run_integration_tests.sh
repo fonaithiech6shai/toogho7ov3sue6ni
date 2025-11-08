@@ -39,4 +39,13 @@ for test_file in integration/test*.rb; do
   fi
 done
 
+echo "📧🛍️ Новые интеграционные тесты:"
+echo "→ Email + Order Integration"
+if ruby integration/test_email_order_integration.rb 2>&1; then
+  echo "✅ Email integration тест прошёл успешно"
+else
+  echo "❌ Ошибка в email integration тесте"
+fi
+echo ""
+
 echo "✅ Интеграционные тесты завершены"

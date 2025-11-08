@@ -20,4 +20,12 @@ for test_file in unit/*test*.rb; do
   fi
 done
 
+echo "📧 Новые тесты функциональности:"
+echo "→ Smart Encoding Detection"
+ruby unit/smart_encoding_test.rb
+echo ""
+echo "→ Email Functionality"
+ruby unit/email_functionality_test.rb
+echo ""
+
 echo "✅ Unit тесты завершены"

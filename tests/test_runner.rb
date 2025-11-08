@@ -58,6 +58,16 @@ class TestRunner
     puts "    gem install nokogiri && ruby unit/test_1c_exchange_unit.rb"
   end
   
+  def self.run_email_tests_only
+    puts "📧 Запуск только Email тестов"
+    puts "  → Unit: smart_encoding_test.rb"
+    system("ruby unit/smart_encoding_test.rb")
+    puts "  → Unit: email_functionality_test.rb"
+    system("ruby unit/email_functionality_test.rb")
+    puts "  → Integration: test_email_order_integration.rb"
+    system("ruby integration/test_email_order_integration.rb")
+  end
+  
   private
   
   def self.run_tests_in_directory(dir)
@@ -102,12 +112,15 @@ else
     TestRunner.run_order_products_only
   when '1c'
     TestRunner.run_1c_tests_only
+  when 'email'
+    TestRunner.run_email_tests_only
   else
-    puts "Использование: ruby test_runner.rb [unit|integration|order_products|1c]"
+    puts "Использование: ruby test_runner.rb [unit|integration|order_products|1c|email]"
     puts "  unit         - только unit тесты"
     puts "  integration  - только интеграционные тесты"
     puts "  order_products - тесты структуры order_products"
     puts "  1c           - тесты 1C Exchange API"
+    puts "  email        - тесты email функциональности и smart encoding"
     exit 1
   end
 end

@@ -292,6 +292,14 @@ jobs:
         ruby integration/test_order_products_flow.rb
         ruby utils/order_products_performance_analysis.rb
         
+    - name: 📧 Тесты Email функциональности
+      run: |
+        echo "📧 Тестируем email отправку и smart encoding..."
+        cd tests
+        ruby unit/smart_encoding_test.rb
+        ruby unit/email_functionality_test.rb
+        ruby integration/test_email_order_integration.rb
+        
     - name: 🔄 Тесты 1C Exchange API совместимости
       run: |
         echo "🔄 Тестируем совместимость 1C Exchange API с order_products..."
@@ -314,7 +322,10 @@ jobs:
         echo "  - Smile Admin Functionality: 15 тестов, 80 assertions (НОВЫЕ)"
         echo "  - CI Improvements: 11 тестов, 45 assertions (НОВЫЕ)"
         echo "  - Order Products Structure: 9 тестов, 27+ assertions (НОВЫЕ)"
-        echo "  - Итого: 100+ тестов, 540+ assertions"
+        echo "  - Smart Encoding Detection: 8 тестов, 40+ assertions (НОВЫЕ)"
+        echo "  - Email Functionality: 12 тестов, 60+ assertions (НОВЫЕ)"
+        echo "  - Email Order Integration: 7 тестов, 35+ assertions (НОВЫЕ)"
+        echo "  - Итого: 127+ тестов, 675+ assertions"
         
     - name: 📤 Загрузка отчётов тестов
       uses: actions/upload-artifact@v4
