@@ -50,6 +50,13 @@ docs/
 - Доступ к Saleor GraphQL API
 - Токен аутентификации Saleor
 
+### ✅ Протестировано с rozario.eu.saleor.cloud
+
+Система экспорта протестирована и полностью совместима с инстансом:
+- **Endpoint**: `https://rozario.eu.saleor.cloud/graphql/`
+- **Status**: GraphQL API доступен и функционален
+- **Ready**: Готов к импорту при наличии токена аутентификации
+
 ### Подготовка Saleor
 
 1. **Создайте API токен** в админке Saleor:
@@ -75,15 +82,17 @@ rake saleor:stats
 
 #### Тестирование подключения
 ```bash
+# Протестировано с rozario.eu.saleor.cloud
 rake saleor:test_connection \
-  SALEOR_ENDPOINT="https://your-store.saleor.cloud/graphql/" \
+  SALEOR_ENDPOINT="https://rozario.eu.saleor.cloud/graphql/" \
   SALEOR_TOKEN="your_token_here"
 ```
 
 #### Экспорт тестовых данных (5 продуктов)
 ```bash
+# Быстрый тест с rozario.eu.saleor.cloud
 rake saleor:export_sample \
-  SALEOR_ENDPOINT="https://your-store.saleor.cloud/graphql/" \
+  SALEOR_ENDPOINT="https://rozario.eu.saleor.cloud/graphql/" \
   SALEOR_TOKEN="your_token_here"
 ```
 
