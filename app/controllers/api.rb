@@ -213,26 +213,88 @@ Rozario::App.controllers :api do
     end
     def crud_product_complects_transaction(data, log)
       begin
+        log.puts "[TRANSACTION START] Обработка #{data.length} товаров от 1С"
+        processed_count = 0
+        created_count = 0
+        updated_count = 0
+        error_count = 0
+        
         ActiveRecord::Base.transaction do
-          data.each { |x|
+          data.each_with_index { |x, index|
             str = x['title']
-            substrings = Complect.all.map(&:header) # Получить все названия комплектов
-            # if str =~ /#{substrings.map { |s| Regexp.escape(s) }.join('|')}/
+            product_1c_id = x['product_id']
+            
+            log.puts "[ITEM #{index + 1}/#{data.length}] 1С ID: #{product_1c_id}, Title: '#{str}'"
+            
+            # Получить все названия комплектов с кешированием
+            @complects_cache ||= Complect.all.map(&:header)
+            substrings = @complects_cache
+            
             if substrings.any? { |substring| str.include?(substring) } # Если указанный в заголовке тип комплекта зарегистирован...
-              product_complect = ProductComplect.where(id_1C: x['product_id']).first # Найти комплект по id_1C
+              log.puts "[ITEM #{index + 1}] ✓ Найден соответствующий тип комплекта в заголовке"
+              
+              product_complect = ProductComplect.where(id_1C: product_1c_id).first # Найти комплект по id_1C
               if product_complect.nil? # Если НЕ найден, то создать новый...
-                # last_bracket = x['title'].rindex(')')
-                last_bracket_text = str.scan(/.*?\(([^)]+)\)/).last[0].strip
-                complect = Complect.where(header: last_bracket_text).first # Найти тип комплекта
-                if x['all_images']
-                  processing_all_images(x['all_images'], x['product_id'])
+                log.puts "[ITEM #{index + 1}] → СОЗДАНИЕ нового продукта"
+                
+                # Извлечь тип комплекта из скобок
+                bracket_matches = str.scan(/.*?\(([^)]+)\)/)
+                if bracket_matches.empty?
+                  log.puts "[ITEM #{index + 1}] ❌ ERROR: Не удалось извлечь тип комплекта из скобок в '#{str}'"
+                  error_count += 1
+                  next
                 end
-                if complect # Если найден, то...
-                  product = Product.new # Зарегистрировать новый продукт
-                  product.header = x['title'].strip.gsub(/ *\([^)]+\)$/, '').strip
-                  product.slug = to_slug(product.header) # x['title'].gsub(/[^\w\s-]/, '').downcase.gsub(/[\s_-]/, '-')
-                  product.rating = 5
-                  if product.save
+                
+                last_bracket_text = bracket_matches.last[0].strip
+                log.puts "[ITEM #{index + 1}] Извлечен тип комплекта: '#{last_bracket_text}'"
+                
+                complect = Complect.where(header: last_bracket_text).first # Найти тип комплекта
+                if complect.nil?
+                  log.puts "[ITEM #{index + 1}] ❌ ERROR: Тип комплекта '#{last_bracket_text}' не найден в БД"
+                  log.puts "[ITEM #{index + 1}] Доступные типы комплектов: #{substrings.join(', ')}"
+                  error_count += 1
+                  next
+                end
+                
+                log.puts "[ITEM #{index + 1}] ✓ Найден комплект ID #{complect.id}: '#{complect.header}'"
+                
+                # Обработка изображений
+                if x['all_images'] && !x['all_images'].empty?
+                  log.puts "[ITEM #{index + 1}] → Обработка #{x['all_images'].length rescue 'N/A'} изображений"
+                  processing_all_images(x['all_images'], product_1c_id)
+                end
+                
+                # Создание продукта
+                product = Product.new
+                product_header = x['title'].strip.gsub(/ *\([^)]+\)$/, '').strip
+                product.header = product_header
+                original_slug = to_slug(product_header)
+                product.slug = original_slug
+                product.rating = 5
+                
+                log.puts "[ITEM #{index + 1}] Создаем Product: header='#{product_header}', slug='#{original_slug}'"
+                
+                # Проверка на дубликаты slug'а
+                existing_slug_count = Product.where(slug: original_slug).count
+                if existing_slug_count > 0
+                  log.puts "[ITEM #{index + 1}] ⚠️ WARNING: Найдено #{existing_slug_count} товаров с таким же slug '#{original_slug}'"
+                  
+                  # Генерируем уникальный slug
+                  counter = 1
+                  while Product.where(slug: product.slug).exists?
+                    product.slug = "#{original_slug}-#{counter}"
+                    counter += 1
+                  end
+                  log.puts "[ITEM #{index + 1}] → Скорректирован slug на '#{product.slug}'"
+                end
+                
+                # Проверка на дубликаты header'а
+                existing_header_count = Product.where(header: product_header).count
+                if existing_header_count > 0
+                  log.puts "[ITEM #{index + 1}] ⚠️ WARNING: Найдено #{existing_header_count} товаров с таким же заголовком '#{product_header}'"
+                end
+                
+                if product.save
                     x['categories'].split(';').each { |category_name|
                       category = Category.where(title: category_name.strip).first
                       if category # Используются только существующие категории, в противном случае пропускаем...
@@ -261,15 +323,41 @@ Rozario::App.controllers :api do
                     product_complect.discounts   = x['discounts'].to_json
                     product_complect.main_image  = x['main_image'].to_json
                     product_complect.all_images  = x['all_images'].to_json
-                    if !product_complect.save; log.puts "Ошибка при регистрации нового объекта: не удалось сохранить комплект. 1С ID: #{x['product_id']}"; end
+                    if !product_complect.save
+                      log.puts "[ITEM #{index + 1}] ❌ PRODUCT_COMPLECT SAVE FAILED for 1С ID: #{product_1c_id}"
+                      log.puts "[ITEM #{index + 1}] ❌ ProductComplect validation errors: #{product_complect.errors.full_messages.join('; ')}"
+                      log.puts "[ITEM #{index + 1}] ❌ ProductComplect attributes:"
+                      product_complect.attributes.each { |key, value| log.puts "[ITEM #{index + 1}]   #{key}: #{value.inspect}" if value }
+                      error_count += 1
+                      next
+                    else
+                      log.puts "[ITEM #{index + 1}] ✓ ProductComplect created successfully ID: #{product_complect.id}"
+                      created_count += 1
+                    end
                   else
-                    json_output = JSON.pretty_generate(product.as_json, indent: '  ')
-                    log.puts "Ошибка при регистрации нового объекта: новый продукт не сохранён. 1С ID: #{x['product_id']}"
-                    log.puts "#{json_output}"
+                    log.puts "[ITEM #{index + 1}] ❌ PRODUCT SAVE FAILED for 1С ID: #{product_1c_id}"
+                    log.puts "[ITEM #{index + 1}] ❌ Product validation errors: #{product.errors.full_messages.join('; ')}"
+                    log.puts "[ITEM #{index + 1}] ❌ Product attributes:"
+                    product.attributes.each { |key, value| log.puts "[ITEM #{index + 1}]   #{key}: #{value.inspect}" }
+                    log.puts "[ITEM #{index + 1}] ❌ Database constraints check:"
+                    log.puts "[ITEM #{index + 1}]   - Products with same header: #{Product.where(header: product_header).count}"
+                    log.puts "[ITEM #{index + 1}]   - Products with same slug: #{Product.where(slug: product.slug).count}"
+                    log.puts "[ITEM #{index + 1}]   - Encoding check: header is valid UTF-8: #{product_header.valid_encoding?}"
+                    log.puts "[ITEM #{index + 1}]   - Encoding check: slug is valid UTF-8: #{product.slug.valid_encoding?}"
+                    error_count += 1
+                    next
                   end
-                else; log.puts "Ошибка при регистрации нового объекта: тип комплекта не найден. 1С ID: #{x['product_id']}"; end
               else # ...иначе обновить данные.
+                log.puts "[ITEM #{index + 1}] → ОБНОВЛЕНИЕ существующего продукта (ProductComplect ID: #{product_complect.id})"
                 product = Product.where(id: product_complect.product_id).first
+                if product.nil?
+                  log.puts "[ITEM #{index + 1}] ❌ ERROR: Product не найден по ID #{product_complect.product_id} для ProductComplect ID #{product_complect.id}"
+                  error_count += 1
+                  next
+                end
+                
+                log.puts "[ITEM #{index + 1}] ✓ Найден Product ID #{product.id}: '#{product.header}'"
+                
                 if product
                   x['categories'].split(';').each { |category_name|
                     category = Category.where(title: category_name.strip).first
@@ -282,8 +370,13 @@ Rozario::App.controllers :api do
                       end
                     end
                   }
+                  old_header = product.header
                   product_name = x['title'].strip.gsub(/ *\([^)]+\)$/, '').strip
-                  product.header              = product_name
+                  product.header = product_name
+                  
+                  if old_header != product_name
+                    log.puts "[ITEM #{index + 1}] → Изменение заголовка: '#{old_header}' → '#{product_name}'"
+                  end
                   product_complect.text       = x['text']
                   product_complect.size       = x['size']
                   product_complect.package    = x['package']
@@ -299,21 +392,38 @@ Rozario::App.controllers :api do
                   product_complect.discounts  = x['discounts'].to_json
                   product_complect.main_image = x['main_image'].to_json
                   product_complect.all_images = x['all_images'].to_json
-                  if !product_complect.save; log.puts "Ошибка при обновлении объекта: не удалось обновить комплект. 1С ID: #{x['product_id']}"; end
-                else; log.puts "Ошибка при обновлении объекта: не удалось найти связанный с комплектом продукт. 1С ID: #{x['product_id']}"; end
+                  if !product_complect.save
+                    log.puts "[ITEM #{index + 1}] ❌ UPDATE FAILED: ProductComplect не сохранен для 1С ID: #{product_1c_id}"
+                    log.puts "[ITEM #{index + 1}] ❌ Update validation errors: #{product_complect.errors.full_messages.join('; ')}"
+                    error_count += 1
+                    next
+                  else
+                    log.puts "[ITEM #{index + 1}] ✓ ProductComplect updated successfully"
+                    updated_count += 1
+                  end
               end
+            else
+              log.puts "[ITEM #{index + 1}] ⚠️ SKIPPED: Заголовок не содержит ни одного известного типа комплекта"
+              log.puts "[ITEM #{index + 1}] Доступные типы: #{substrings.join(', ')}"
             end
+            
+            processed_count += 1
           }
         end
-        log.puts "Транзакция crud_product_complects успешно завершена."
+        log.puts "[TRANSACTION SUCCESS] Обработано: #{processed_count}, Создано: #{created_count}, Обновлено: #{updated_count}, Ошибок: #{error_count}"
         return true # Транзакция успешно завершена
       rescue ActiveRecord::RecordInvalid => e
-        log.puts "Ошибка валидации записи: #{e.message}"
-        log.puts e.backtrace.join("\n") # Добавляем трассировку стека для отладки
+        log.puts "[TRANSACTION ERROR] Ошибка валидации записи: #{e.message}"
+        log.puts "[TRANSACTION ERROR] Record: #{e.record.class.name} #{e.record.inspect}"
+        log.puts "[TRANSACTION ERROR] Validation errors: #{e.record.errors.full_messages.join('; ')}"
+        log.puts "[TRANSACTION ERROR] Stacktrace (first 10 lines):"
+        e.backtrace.first(10).each { |line| log.puts "[TRANSACTION ERROR]   #{line}" }
         return false # Ошибка валидации
-      rescue => e
-        log.puts "Ошибка во время транзакции crud_product_complects: #{e.message}"
-        log.puts e.backtrace.join("\n") # Добавляем трассировку стека для отладки
+      rescue StandardError => e
+        log.puts "[TRANSACTION ERROR] Ошибка во время транзакции: #{e.class.name}: #{e.message}"
+        log.puts "[TRANSACTION ERROR] Current processing stats - Processed: #{processed_count rescue 0}, Created: #{created_count rescue 0}, Updated: #{updated_count rescue 0}, Errors: #{error_count rescue 0}"
+        log.puts "[TRANSACTION ERROR] Stacktrace (first 10 lines):"
+        e.backtrace.first(10).each { |line| log.puts "[TRANSACTION ERROR]   #{line}" }
         return false  # Общая ошибка транзакции
       end
     end
