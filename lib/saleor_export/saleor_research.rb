@@ -212,11 +212,14 @@ class RozarioToSaleorMapper
     {
       name: rozario_category.title,
       slug: rozario_category.slug || slugify(rozario_category.title),
-      description: rozario_category.announce,
-      seoTitle: rozario_category.seo_title,
-      seoDescription: rozario_category.seo_description,
+      description: format_description_simple(rozario_category.announce),
       parent: rozario_category.parent_id ? find_saleor_category_id(rozario_category.parent_id) : nil,
-      backgroundImage: rozario_category.image.present? ? image_url(rozario_category.image) : nil
+      backgroundImage: rozario_category.image.present? ? image_url(rozario_category.image) : nil,
+      metadata: [
+        { key: "rozario_seo_title", value: rozario_category.seo_title || "" },
+        { key: "rozario_seo_description", value: rozario_category.seo_description || "" },
+        { key: "rozario_id", value: rozario_category.id.to_s }
+      ]
     }
   end
   
@@ -301,6 +304,21 @@ class RozarioToSaleorMapper
           "type" => "paragraph",
           "data" => {
             "text" => description.join("\n\n")
+          }
+        }
+      ]
+    }.to_json
+  end
+  
+  def self.format_description_simple(text)
+    return "{}" if text.blank?
+    
+    {
+      "blocks" => [
+        {
+          "type" => "paragraph",
+          "data" => {
+            "text" => text.to_s
           }
         }
       ]

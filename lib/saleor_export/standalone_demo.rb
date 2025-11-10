@@ -58,9 +58,12 @@ class SaleorMapper
       name: rozario_category.title,
       slug: slugify(rozario_category.title),
       description: rozario_category.announce,
-      seoTitle: rozario_category.seo_title,
-      seoDescription: rozario_category.seo_description,
-      parent: rozario_category.parent_id ? "parent_#{rozario_category.parent_id}" : nil
+      parent: rozario_category.parent_id ? "parent_#{rozario_category.parent_id}" : nil,
+      metadata: [
+        { key: "rozario_seo_title", value: rozario_category.seo_title || "" },
+        { key: "rozario_seo_description", value: rozario_category.seo_description || "" },
+        { key: "rozario_id", value: rozario_category.id.to_s }
+      ]
     }
   end
   
