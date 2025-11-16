@@ -91,6 +91,91 @@ class RozarioSaleorExporter
     return nil
   end
 
+  def get_or_create_rozario_product_type
+    # Сначала проверяем, существует ли уже тип "Rozario Flowers"
+    query = {
+      query: """
+        query {
+          productTypes(first: 50) {
+            edges {
+              node {
+                id
+                name
+                slug
+                hasVariants
+              }
+            }
+          }
+        }
+      """
+    }
+    
+    response = make_request(query)
+    
+    if response && response['data'] && response['data']['productTypes']
+      product_types = response['data']['productTypes']['edges']
+      
+      # Ищем существующий тип Rozario Flowers
+      rozario_type = product_types.find { |pt| pt['node']['name'] == 'Rozario Flowers' }
+      if rozario_type
+        puts "   🏷️  Найден существующий тип: #{rozario_type['node']['name']} (ID: #{rozario_type['node']['id']})"
+        return rozario_type['node']
+      end
+    end
+    
+    # Если не найден, создаем новый тип
+    puts "   🔧 Создаем новый тип продукта: Rozario Flowers..."
+    return create_rozario_product_type
+  end
+
+  def create_rozario_product_type
+    mutation = {
+      query: """
+        mutation CreateProductType($input: ProductTypeInput!) {
+          productTypeCreate(input: $input) {
+            productType {
+              id
+              name
+              slug
+              hasVariants
+            }
+            errors {
+              field
+              message
+              code
+            }
+          }
+        }
+      """,
+      variables: {
+        input: {
+          name: "Rozario Flowers",
+          slug: "rozario-flowers",
+          hasVariants: true,
+          isShippingRequired: true,
+          weight: 0.5
+        }
+      }
+    }
+    
+    response = make_request(mutation)
+    
+    if response && response['data'] && response['data']['productTypeCreate']
+      result = response['data']['productTypeCreate']
+      if result['errors'] && result['errors'].any?
+        puts "     ❌ Ошибка создания типа: #{result['errors'].map { |e| e['message'] }.join(', ')}"
+        return nil
+      elsif result['productType']
+        product_type = result['productType']
+        puts "     ✅ Тип создан: #{product_type['name']} (ID: #{product_type['id']})"
+        return product_type
+      end
+    end
+    
+    puts "     ❌ Не удалось создать тип продукта"
+    return nil
+  end
+  
   def get_default_product_type
     query = {
       query: """
@@ -179,6 +264,9 @@ class RozarioSaleorExporter
         product = result['product']
         puts "   ✅ Продукт создан: #{product['id']}"
         
+        # Добавляем продукт в каналы продаж
+        add_product_to_channels(product['id'])
+        
         # Создаем варианты продукта
         if variants.any?
           variants.each_with_index do |variant_data, index|
@@ -193,6 +281,59 @@ class RozarioSaleorExporter
     puts "   ❌ Не удалось создать продукт"
     puts "   📋 Ответ сервера: #{response}" if response
     return nil
+  end
+
+  def add_product_to_channels(product_id)
+    puts "   🔗 Добавляем продукт в каналы..."
+    
+    channel_id = get_default_channel_id
+    return false unless channel_id
+    
+    mutation = {
+      query: """
+        mutation AddProductToChannel($id: ID!, $input: ProductChannelListingUpdateInput!) {
+          productChannelListingUpdate(id: $id, input: $input) {
+            product {
+              id
+            }
+            errors {
+              field
+              message
+              code
+            }
+          }
+        }
+      """,
+      variables: {
+        id: product_id,
+        input: {
+          updateChannels: [{
+            channelId: channel_id,
+            isPublished: true,
+            publicationDate: Time.now.strftime('%Y-%m-%d'),
+            visibleInListings: true,
+            isAvailableForPurchase: true,
+            availableForPurchaseDate: Time.now.strftime('%Y-%m-%d')
+          }]
+        }
+      }
+    }
+    
+    response = make_request(mutation)
+    
+    if response && response['data'] && response['data']['productChannelListingUpdate']
+      result = response['data']['productChannelListingUpdate']
+      if result['errors'] && result['errors'].any?
+        puts "     ❌ Ошибка добавления в канал: #{result['errors'].map { |e| e['message'] }.join(', ')}"
+        return false
+      elsif result['product']
+        puts "     ✅ Продукт добавлен в канал"
+        return true
+      end
+    end
+    
+    puts "     ❌ Не удалось добавить продукт в канал"
+    return false
   end
 
   def create_product_variant(product_id, variant_data, is_default = false)
@@ -419,8 +560,8 @@ def run_rozario_export
   
   puts "\n📤 Начинаем экспорт..."
   
-  # Получаем тип продукта
-  product_type = exporter.get_default_product_type
+  # Получаем или создаем тип продукта Rozario Flowers
+  product_type = exporter.get_or_create_rozario_product_type
   return false unless product_type
   
   exported_categories = {}
